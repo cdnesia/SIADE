@@ -15,6 +15,7 @@ use App\Http\Controllers\SyncController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
+Route::redirect('/', '/login', 301);
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
