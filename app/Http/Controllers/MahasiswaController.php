@@ -130,6 +130,12 @@ class MahasiswaController extends Controller
                                     4 => 3,
                                     default => null
                                 },
+                                'jenis_pendaftaran_id' => match ((int)$m->JenisPendaftaranID) {
+                                    1 => 1,
+                                    3 => 2,
+                                    4 => 13,
+                                    default => null
+                                },
                                 'pa_id' => $m->PaID,
                             ];
                             $existingNpm[] = $m->nim;
