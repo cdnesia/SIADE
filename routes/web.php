@@ -12,6 +12,7 @@ use App\Http\Controllers\PenerimaBeasiswaController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\RolesController;
 use App\Http\Controllers\SyncController;
+use App\Http\Controllers\TahunAkademikController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,9 +26,11 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
 
     Route::post('mahasiswa/sync', [MahasiswaController::class, 'sync'])->name('mahasiswa.sync');
     Route::post('mahasiswa/detail/krs/{id}', [MahasiswaController::class, 'krs'])->name('mahasiswa.detail.krs');
+    Route::post('mahasiswa/detail/khs/{id}/update-nilai', [MahasiswaController::class, 'khsUpdateNilai'])->name('mahasiswa.detail.khs.update-nilai');
     Route::post('mahasiswa/detail/khs/{id}', [MahasiswaController::class, 'khs'])->name('mahasiswa.detail.khs');
     Route::resource('mahasiswa', MahasiswaController::class);
 
+    Route::resource('tahun-akademik', TahunAkademikController::class)->except('show');
     Route::resource('kalender-akademik', KalenderAkademikController::class)->except('show');
     Route::resource('kegiatan-mahasiswa', KegiatanMahasiswaController::class)->except('show');
 

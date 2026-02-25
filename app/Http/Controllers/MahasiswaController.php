@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Mahasiswa;
+use App\Models\SkalaNilai;
 use App\Services\DataService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
@@ -80,6 +81,87 @@ class MahasiswaController extends Controller
     {
         $d['krs'] = $service->krs($id);
         return view('mahasiswa.khs', $d);
+    }
+    public function khsUpdateNilai($id, Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $request->validate([
+                'nilai' => 'required|numeric|min:0|max:100',
+                'mahasiswa' => 'required'
+            ]);
+
+            try {
+                $krsId = Crypt::decrypt($id);
+                $npm   = Crypt::decrypt($request->input('mahasiswa'));
+            } catch (DecryptException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Parameter tidak valid'
+                ], 400);
+            }
+
+            $mahasiswa = Mahasiswa::select('kode_program_studi')
+                ->where('npm', $npm)
+                ->first();
+
+            if (!$mahasiswa) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mahasiswa tidak ditemukan',
+                ], 404);
+            }
+
+            $nilaiAngka = $request->input('nilai');
+
+            $skalaNilai = SkalaNilai::where('nilai_mulai', '<=', $nilaiAngka)
+                ->where('nilai_sampai', '>=', $nilaiAngka)
+                ->where('kode_program_studi', $mahasiswa->kode_program_studi)
+                ->first();
+
+            if (!$skalaNilai) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Skala nilai tidak ditemukan'
+                ], 404);
+            }
+
+            $updated = DB::table('tbl_mahasiswa_krs')
+                ->where('id', $krsId)
+                ->where('npm', $npm)
+                ->update([
+                    'nilai_angka' => $nilaiAngka,
+                    'nilai_huruf' => $skalaNilai->nama,
+                    'nilai_bobot' => $skalaNilai->bobot,
+                    'lulus'       => $skalaNilai->lulus,
+                    'updated_at'  => now(),
+                ]);
+
+            if (!$updated) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data KRS tidak ditemukan atau gagal diupdate'
+                ], 404);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Nilai berhasil diupdate',
+                'data' => [
+                    'nilai_angka' => $nilaiAngka,
+                    'nilai_huruf' => $skalaNilai->nama,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan server',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
     public function destroy($id)
     {

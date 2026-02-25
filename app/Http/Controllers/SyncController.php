@@ -220,17 +220,16 @@ class SyncController extends Controller
     {
         $now = now();
         $totalNew = 0;
-        $existingCodes = SkalaNilai::pluck('id')->toArray();
-        DB::connection('siade_old')->table('nilai')->orderBy('id')->chunk(500, function ($rows) use (&$totalNew, $existingCodes, $now) {
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        SkalaNilai::truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        DB::connection('siade_old')->table('nilai')->orderBy('id')->chunk(500, function ($rows) use (&$totalNew, $now) {
             $data = [];
             foreach ($rows as $m) {
-                if (in_array($m->id, $existingCodes)) {
-                    continue;
-                }
                 $data[] = [
                     'id' => $m->id,
                     'nama' => $m->nama,
-                    'lulus' => $m->NA === 'YA' ? 'Y' : 'T',
+                    'lulus' => $m->lulus === 'YA' ? 'Y' : 'T',
                     'kode_program_studi' => $m->ProdiID,
                     'nilai_mulai' => $m->nilai_mulai,
                     'nilai_sampai' => $m->nilai_sampai,
@@ -406,8 +405,8 @@ class SyncController extends Controller
                 if (!empty($data)) {
                     PenerimaBeasiswa::upsert(
                         $data,
-                        ['id'], // unique key
-                        ['tahun_akademik'] // field yang diupdate
+                        ['id'],
+                        ['tahun_akademik']
                     );
                 }
             });
@@ -426,7 +425,6 @@ class SyncController extends Controller
                     if (in_array($m->id, $existingCodes)) {
                         continue;
                     }
-                    // $tahun_akademik = explode(',', $m->tahun_semester);
                     $data[] = [
                         'id' => $m->id,
                         'jadwal_id' => $m->id_jadwal,

@@ -54,6 +54,7 @@ class DataService
             $total_bobot_kumulatif += $bobot * $sks;
 
             $krs[$ta]['krs'][] = [
+                'encrypted_id' => Crypt::encrypt($row['id']),
                 'nilai_angka' => $row['nilai_angka'] ?? '',
                 'nilai_huruf' => $row['nilai_huruf'] ?? '',
                 'nilai_bobot' => $bobot,
