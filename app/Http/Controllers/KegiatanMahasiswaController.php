@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\KegiatanMahasiswa;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
+use App\Services\DataService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -43,10 +44,11 @@ class KegiatanMahasiswaController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(DataService $dataService)
     {
         $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
         $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
+        $d['bipot'] = $dataService->bipot();
         $d['data'] = null;
         return view('kegiatan-mahasiswa.form', $d);
     }
@@ -64,6 +66,8 @@ class KegiatanMahasiswaController extends Controller
             'minimal_sks' => 'required',
             'maksimal_nilai_d' => 'required',
             'nama_kegiatan' => 'required|string|max:255',
+            'nama_biaya' => 'required',
+            'biaya_pendaftaran' => 'required',
         ]);
 
         KegiatanMahasiswa::insert([
@@ -74,6 +78,8 @@ class KegiatanMahasiswaController extends Controller
             'maksimal_nilai_d' => $request->maksimal_nilai_d,
             'kode_program_studi' => json_encode($request->kode_program_studi),
             'tipe' => $request->tipe,
+            'id_bipot' => $request->nama_biaya,
+            'biaya_pendaftaran' => $request->biaya_pendaftaran,
         ]);
 
         return redirect()
@@ -84,13 +90,14 @@ class KegiatanMahasiswaController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(string $id, DataService $dataService)
     {
         try {
             $id = Crypt::decrypt($id);
             $d['data'] = KegiatanMahasiswa::findOrFail($id);
             $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
             $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
+            $d['bipot'] = $dataService->bipot();
             return view('kegiatan-mahasiswa.form', $d);
         } catch (DecryptException $e) {
             return redirect()
@@ -114,6 +121,9 @@ class KegiatanMahasiswaController extends Controller
             'minimal_sks' => 'required',
             'maksimal_nilai_d' => 'required',
             'nama_kegiatan' => 'required|string|max:255',
+            'nama_biaya' => 'required',
+            'biaya_pendaftaran' => 'required',
+
         ]);
 
         KegiatanMahasiswa::where('id', $id)->update([
@@ -124,6 +134,8 @@ class KegiatanMahasiswaController extends Controller
             'maksimal_nilai_d' => $request->maksimal_nilai_d,
             'kode_program_studi' => json_encode($request->kode_program_studi),
             'tipe' => $request->tipe,
+            'id_bipot' => $request->nama_biaya,
+            'biaya_pendaftaran' => $request->biaya_pendaftaran,
         ]);
 
         return redirect()->route($this->modul . '.index')

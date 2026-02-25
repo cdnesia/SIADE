@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\KRS;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 
 class DataService
 {
@@ -79,5 +81,33 @@ class DataService
         }
 
         return $krs;
+    }
+    public function bipot()
+    {
+        $url = config('services.simaku_url');
+        $timestamp = time();
+        $nonce = Str::uuid()->toString();
+        $path = 'api/data-bipot';
+
+        $body = json_encode([]);
+
+        $data = $timestamp . $nonce . 'POST' . $path . $body;
+        $signature = hash_hmac('sha256', $data, config('services.hmac_secret'));
+        $response = Http::withHeaders([
+            'X-API-KEY'   => config('services.hmac_api_key'),
+            'X-TIMESTAMP' => $timestamp,
+            'X-NONCE'     => $nonce,
+            'X-SIGNATURE' => $signature,
+        ])->withBody($body, 'application/json')
+            ->post($url . $path);
+
+        $responseData = $response->json();
+
+        $data = $responseData['data'] ?? [];
+
+        if (empty($data)) {
+            return [];
+        }
+        return $data;
     }
 }

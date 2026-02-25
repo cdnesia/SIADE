@@ -22,6 +22,8 @@
                             <th>Minimal SKS</th>
                             <th>Minimal Semester</th>
                             <th>Maksimal Nilai D</th>
+                            <th>Nama Biaya</th>
+                            <th>Biaya Pendaftaran</th>
                             <th>Tipe Kegiatan</th>
                             @canany([$modul . '.edit', $modul . '.destroy'])
                                 <th width="50px">Aksi</th>
@@ -42,6 +44,8 @@
                                 <td>{{ $item->minimal_sks }}</td>
                                 <td>{{ $item->minimal_semester }}</td>
                                 <td>{{ $item->maksimal_nilai_d }}</td>
+                                <td>{{ $item->id_bipot }}</td>
+                                <td>Rp. {{ number_format($item->biaya_pendaftaran, 0, ',', '.') }}</td>
                                 <td>{{ $item->tipe }}</td>
                                 @canany([$modul . '.edit', $modul . '.destroy'])
                                     <td>

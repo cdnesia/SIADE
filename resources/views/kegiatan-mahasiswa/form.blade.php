@@ -16,7 +16,7 @@
                 @if ($data)
                     @method('PUT')
                 @endif
-                <div class="col-md-12">
+                <div class="col-md-4">
                     <label class="form-label">Nama Kegiatan</label>
                     <input type="text" class="form-control @error('nama_kegiatan') is-invalid @enderror"
                         name="nama_kegiatan" value="{{ old('nama_kegiatan', $data->nama_kegiatan ?? '') }}"
@@ -27,7 +27,7 @@
                         </div>
                     @enderror
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">Tahun Angkatan</label>
                     <select name="tahun_angkatan[]"
                         class="form-select multiple-select2 @error('tahun_angkatan') is-invalid @enderror"
@@ -47,7 +47,7 @@
                         </div>
                     @enderror
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">Program Studi</label>
                     <select name="kode_program_studi[]"
                         class="form-select multiple-select2 @error('kode_program_studi') is-invalid @enderror"
@@ -70,18 +70,17 @@
                         </div>
                     @enderror
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">Minimal SKS</label>
-                    <input type="text" class="form-control @error('minimal_sks') is-invalid @enderror"
-                        name="minimal_sks" value="{{ old('minimal_sks', $data->minimal_sks ?? '') }}"
-                        placeholder="Minimal SKS">
+                    <input type="text" class="form-control @error('minimal_sks') is-invalid @enderror" name="minimal_sks"
+                        value="{{ old('minimal_sks', $data->minimal_sks ?? '') }}" placeholder="Minimal SKS">
                     @error('minimal_sks')
                         <div class="invalid-feedback">
                             {{ $message }}
                         </div>
                     @enderror
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">Minimal Semester</label>
                     <input type="text" class="form-control @error('minimal_semester') is-invalid @enderror"
                         name="minimal_semester" value="{{ old('minimal_semester', $data->minimal_semester ?? '') }}"
@@ -92,7 +91,7 @@
                         </div>
                     @enderror
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label">Maksimal Nilai D</label>
                     <input type="text" class="form-control @error('maksimal_nilai_d') is-invalid @enderror"
                         name="maksimal_nilai_d" value="{{ old('maksimal_nilai_d', $data->maksimal_nilai_d ?? '') }}"
@@ -103,7 +102,35 @@
                         </div>
                     @enderror
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
+                    <label class="form-label">Nama Biaya</label>
+                    <select name="nama_biaya" id="nama_biaya" class="form-select select2 @error('nama_biaya') is-invalid @enderror" data-placeholder="--Biaya dan Potongan--">
+                        <option value=""></option>
+                        @foreach ($bipot as $item)
+                            <option value="{{ $item['id'] }}"
+                                {{ old('nama_biaya', $data->id_bipot ?? '') == $item['id'] ? 'selected' : '' }}>
+                                {{ $item['nama_bipot'] }}
+                            </option>
+                        @endforeach
+                        @error('nama_biaya')
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+                        @enderror
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Biaya Pendaftaran</label>
+                    <input type="text" class="form-control @error('biaya_pendaftaran') is-invalid @enderror"
+                        name="biaya_pendaftaran" value="{{ old('biaya_pendaftaran', $data->biaya_pendaftaran ?? '') }}"
+                        placeholder="Biaya Pendaftaran">
+                    @error('biaya_pendaftaran')
+                        <div class="invalid-feedback">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
+                <div class="col-md-4">
                     <label class="form-label">Jenis Kegiatan</label>
                     <div class="d-flex gap-3">
                         <div class="form-check">

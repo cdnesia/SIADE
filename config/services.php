@@ -38,4 +38,8 @@ return [
         'username' => env('NEOFEEDER_USERNAME'),
         'password' => env('NEOFEEDER_PASSWORD'),
     ],
+
+    'simaku_url' => env('SIMAKU_URL'),
+    'hmac_api_key' => env('HMAC_API_KEY'),
+    'hmac_secret'  => env('HMAC_SECRET'),
 ];
