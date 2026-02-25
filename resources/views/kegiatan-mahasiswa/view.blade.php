@@ -19,6 +19,7 @@
                             <th>Nama Kegiatan</th>
                             <th>Program Studi</th>
                             <th>Tahun Angkatan</th>
+                            <th>Kelas Perkuliahan</th>
                             <th>Minimal SKS</th>
                             <th>Minimal Semester</th>
                             <th>Maksimal Nilai D</th>
@@ -41,10 +42,11 @@
                                     @endforeach
                                 </td>
                                 <td>{{ $item->tahun_angkatan }}</td>
+                                <td>{{ $item->nama_program_perkuliahan }}</td>
                                 <td>{{ $item->minimal_sks }}</td>
                                 <td>{{ $item->minimal_semester }}</td>
                                 <td>{{ $item->maksimal_nilai_d }}</td>
-                                <td>{{ $item->id_bipot }}</td>
+                                <td>{{ $item->nama_bipot }}</td>
                                 <td>Rp. {{ number_format($item->biaya_pendaftaran, 0, ',', '.') }}</td>
                                 <td>{{ $item->tipe }}</td>
                                 @canany([$modul . '.edit', $modul . '.destroy'])

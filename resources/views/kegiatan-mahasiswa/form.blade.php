@@ -16,7 +16,7 @@
                 @if ($data)
                     @method('PUT')
                 @endif
-                <div class="col-md-4">
+                <div class="col-md-12">
                     <label class="form-label">Nama Kegiatan</label>
                     <input type="text" class="form-control @error('nama_kegiatan') is-invalid @enderror"
                         name="nama_kegiatan" value="{{ old('nama_kegiatan', $data->nama_kegiatan ?? '') }}"
@@ -69,6 +69,23 @@
                             {{ $message }}
                         </div>
                     @enderror
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Kelas Perkuliahan</label>
+                    <select name="kelas_perkuliahan_id" id="kelas_perkuliahan_id" class="form-select select2 @error('kelas_perkuliahan_id') is-invalid @enderror" data-placeholder="--Pilih Kelas Perkuliahan--">
+                        <option value=""></option>
+                        @foreach ($kelas_perkuliahan as $item)
+                            <option value="{{ $item->id }}"
+                                {{ old('kelas_perkuliahan_id', $data->kelas_perkuliahan_id ?? '') == $item->id ? 'selected' : '' }}>
+                                {{ $item->nama_program_perkuliahan }}
+                            </option>
+                        @endforeach
+                        @error('kelas_perkuliahan_id')
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+                        @enderror
+                    </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Minimal SKS</label>

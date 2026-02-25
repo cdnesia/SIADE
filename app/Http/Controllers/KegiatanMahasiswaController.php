@@ -23,15 +23,21 @@ class KegiatanMahasiswaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(DataService $dataService)
     {
-        $kegiatans = DB::table('tbl_kegiatan_mahasiswa')->get();
+        $kegiatans = DB::table('tbl_kegiatan_mahasiswa as km')
+            ->select('km.*', 'kp.nama_program_perkuliahan')
+            ->leftJoin('master_kelas_perkuliahan as kp', 'km.kelas_perkuliahan_id', '=', 'kp.id')
+            ->get();
         $allProdi = Prodi::all()->keyBy('kode_program_studi');
+        $allbipot = collect($dataService->bipot())->keyBy('id');
+
         foreach ($kegiatans as $item) {
             $kodeProdi = $item->kode_program_studi
                 ? json_decode($item->kode_program_studi, true)
                 : [];
 
+            $item->nama_bipot = $allbipot[$item->id_bipot]['nama_bipot'] ?? null;
             $item->prodis = collect($kodeProdi)
                 ->map(fn($kode) => $allProdi[$kode] ?? null)
                 ->filter()
@@ -46,6 +52,7 @@ class KegiatanMahasiswaController extends Controller
      */
     public function create(DataService $dataService)
     {
+        $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
         $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
         $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
         $d['bipot'] = $dataService->bipot();
@@ -68,6 +75,7 @@ class KegiatanMahasiswaController extends Controller
             'nama_kegiatan' => 'required|string|max:255',
             'nama_biaya' => 'required',
             'biaya_pendaftaran' => 'required',
+            'kelas_perkuliahan_id' => 'required',
         ]);
 
         KegiatanMahasiswa::insert([
@@ -80,6 +88,7 @@ class KegiatanMahasiswaController extends Controller
             'tipe' => $request->tipe,
             'id_bipot' => $request->nama_biaya,
             'biaya_pendaftaran' => $request->biaya_pendaftaran,
+            'kelas_perkuliahan_id' => $request->kelas_perkuliahan_id,
         ]);
 
         return redirect()
@@ -98,6 +107,7 @@ class KegiatanMahasiswaController extends Controller
             $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
             $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
             $d['bipot'] = $dataService->bipot();
+            $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
             return view('kegiatan-mahasiswa.form', $d);
         } catch (DecryptException $e) {
             return redirect()
@@ -123,6 +133,7 @@ class KegiatanMahasiswaController extends Controller
             'nama_kegiatan' => 'required|string|max:255',
             'nama_biaya' => 'required',
             'biaya_pendaftaran' => 'required',
+            'kelas_perkuliahan_id' => 'required',
 
         ]);
 
@@ -136,6 +147,7 @@ class KegiatanMahasiswaController extends Controller
             'tipe' => $request->tipe,
             'id_bipot' => $request->nama_biaya,
             'biaya_pendaftaran' => $request->biaya_pendaftaran,
+            'kelas_perkuliahan_id' => $request->kelas_perkuliahan_id,
         ]);
 
         return redirect()->route($this->modul . '.index')
