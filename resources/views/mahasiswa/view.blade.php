@@ -27,7 +27,7 @@
                             <th>Program Studi</th>
                             <th>Kelas Perkuliahan</th>
                             <th>Tahun Masuk</th>
-                            @canany([$modul . '.destroy', $modul . '.edit'])
+                            @canany([$modul . '.destroy', $modul . '.edit', $modul . '.detail.krs', $modul . '.detail.khs'])
                                 <th>Aksi</th>
                             @endcanany
                         </tr>

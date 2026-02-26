@@ -8,7 +8,10 @@
         [
             'title' => 'Data Mahasiswa',
             'icon' => 'bx bx-user',
-            'route' => 'mahasiswa.index',
+            'children' => [
+                ['title' => 'Jalur Penerimaan Mahasiswa Baru', 'route' => 'mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Jalur Pindahan/Transfer/RPL', 'route' => 'mahasiswa-ptrpl.index', 'icon' => 'bx bx-radio-circle'],
+            ],
         ],
         [
             'title' => 'Beasiswa',

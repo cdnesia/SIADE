@@ -8,6 +8,7 @@ use App\Http\Controllers\KegiatanMahasiswaController;
 use App\Http\Controllers\LaporanPenerimaBeasiswaController;
 use App\Http\Controllers\LembagaBeasiswaController;
 use App\Http\Controllers\MahasiswaController;
+use App\Http\Controllers\MahasiswaPTRPLController;
 use App\Http\Controllers\PenerimaBeasiswaController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\RolesController;
@@ -29,6 +30,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::post('mahasiswa/detail/khs/{id}/update-nilai', [MahasiswaController::class, 'khsUpdateNilai'])->name('mahasiswa.detail.khs.update-nilai');
     Route::post('mahasiswa/detail/khs/{id}', [MahasiswaController::class, 'khs'])->name('mahasiswa.detail.khs');
     Route::resource('mahasiswa', MahasiswaController::class);
+    Route::resource('mahasiswa-ptrpl', MahasiswaPTRPLController::class);
 
     Route::resource('tahun-akademik', TahunAkademikController::class)->except('show');
     Route::resource('kalender-akademik', KalenderAkademikController::class)->except('show');
