@@ -79,7 +79,7 @@
                         data: 'tahun_angkatan',
                         name: 'm.tahun_angkatan'
                     },
-                    @canany([$modul . '.destroy', $modul . '.edit'])
+                    @canany([$modul . '.destroy', $modul . '.edit', $modul . '.detail.krs', $modul . '.detail.khs'])
                         {
                             data: 'aksi',
                             name: 'aksi',
