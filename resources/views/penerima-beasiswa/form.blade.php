@@ -73,7 +73,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Jumlah Jaminan</label>
                     <input type="text" class="form-control @error('jumlah_jaminan') is-invalid @enderror"
-                        name="jumlah_jaminan" value="{{ old('jumlah_jaminan',(int) $data ? $data->jumlah_jaminan : '') }}"
+                        name="jumlah_jaminan" value="{{ old('jumlah_jaminan',$data ? (int) $data->jumlah_jaminan : '') }}"
                         placeholder="Jumlah Jaminan">
                     @error('jumlah_jaminan')
                         <div class="invalid-feedback">
