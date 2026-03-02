@@ -50,7 +50,7 @@
                         </div>
                     @enderror
                 </div>
-                <div class="col-md-6">
+                {{-- <div class="col-md-6">
                     <label class="form-label">Tahun Akademik</label>
                     <select name="tahun_akademik[]"
                         class="form-select multiple-select2 @error('tahun_akademik') is-invalid @enderror"
@@ -69,11 +69,40 @@
                             {{ $message }}
                         </div>
                     @enderror
+                </div> --}}
+                <div class="col-md-6">
+                    <label class="form-label d-block">Tahun Akademik</label>
+
+                    @php
+                        $selected = old('tahun_akademik', $data ? json_decode($data->tahun_akademik, true) : []);
+                    @endphp
+
+                    <div class="row">
+                        @foreach ($tahun_akademik as $item)
+                            <div class="col-md-6">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input @error('tahun_akademik') is-invalid @enderror"
+                                        type="checkbox" name="tahun_akademik[]" value="{{ $item->kode_tahun_akademik }}"
+                                        id="ta_{{ $item->kode_tahun_akademik }}"
+                                        {{ in_array($item->kode_tahun_akademik, $selected) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="ta_{{ $item->kode_tahun_akademik }}">
+                                        {{ $item->kode_tahun_akademik }}
+                                    </label>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    @error('tahun_akademik')
+                        <div class="invalid-feedback d-block">
+                            {{ $message }}
+                        </div>
+                    @enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Jumlah Jaminan</label>
                     <input type="text" class="form-control @error('jumlah_jaminan') is-invalid @enderror"
-                        name="jumlah_jaminan" value="{{ old('jumlah_jaminan',$data ? (int) $data->jumlah_jaminan : '') }}"
+                        name="jumlah_jaminan" value="{{ old('jumlah_jaminan', $data ? (int) $data->jumlah_jaminan : '') }}"
                         placeholder="Jumlah Jaminan">
                     @error('jumlah_jaminan')
                         <div class="invalid-feedback">
