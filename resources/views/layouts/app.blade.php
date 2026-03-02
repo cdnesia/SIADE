@@ -129,15 +129,15 @@
                                     alt="user avatar">
                             @endif
                             <div class="user-info">
-                                {{-- <p class="user-name mb-0 text-uppercase">
-                                    {{ $data_saya->saya(Session::get('id'))->nama_lengkap ?? 'Not Available' }}</p>
+                                <p class="user-name mb-0 text-uppercase">
+                                    {{ Auth::guard('web')->user()?->name }}</p>
                                 <p class="designattion mb-0">
-                                    {{ $data_saya->saya(Session::get('id'))->nik ?? 'Not Available' }}</p> --}}
+                                    {{ Auth::guard('web')->user()?->email }}</p>
                             </div>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item d-flex align-items-center"
-                                    href="https://sso.umjambi.ac.id/realms/sso/login-actions/reset-credentials"><i
+                                    href="#"><i
                                         class="bx bx-cog fs-5"></i><span>Pengaturan</span></a>
                             </li>
                             <li>
