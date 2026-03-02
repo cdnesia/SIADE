@@ -73,6 +73,7 @@
             $('#example').each(function() {
                 $(this).DataTable({
                     scrollX: true,
+                    stateSave: true
                 });
             });
         });

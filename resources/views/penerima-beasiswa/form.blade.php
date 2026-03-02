@@ -50,26 +50,6 @@
                         </div>
                     @enderror
                 </div>
-                {{-- <div class="col-md-6">
-                    <label class="form-label">Tahun Akademik</label>
-                    <select name="tahun_akademik[]"
-                        class="form-select multiple-select2 @error('tahun_akademik') is-invalid @enderror"
-                        data-placeholder="--Pilih Tahun Akademik--" multiple>
-                        <option value=""></option>
-                        @foreach ($tahun_akademik as $item)
-                            <option value="{{ $item->kode_tahun_akademik }}"
-                                {{ in_array($item->kode_tahun_akademik, old('tahun_akademik', $data ? json_decode($data->tahun_akademik, true) : []))
-                                    ? 'selected'
-                                    : '' }}>
-                                {{ $item->kode_tahun_akademik }}</option>
-                        @endforeach
-                    </select>
-                    @error('tahun_akademik')
-                        <div class="invalid-feedback">
-                            {{ $message }}
-                        </div>
-                    @enderror
-                </div> --}}
                 <div class="col-md-6">
                     <label class="form-label d-block">Tahun Akademik</label>
 
