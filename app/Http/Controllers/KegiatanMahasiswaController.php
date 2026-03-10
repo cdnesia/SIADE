@@ -84,6 +84,7 @@ class KegiatanMahasiswaController extends Controller
             'minimal_sks' => $request->minimal_sks,
             'minimal_sks' => $request->minimal_sks,
             'maksimal_nilai_d' => $request->maksimal_nilai_d,
+            'minimal_semester' => $request->minimal_semester,
             'kode_program_studi' => json_encode($request->kode_program_studi),
             'tipe' => $request->tipe,
             'id_bipot' => $request->nama_biaya,
