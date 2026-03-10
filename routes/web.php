@@ -5,6 +5,7 @@ use App\Http\Controllers\Feeder\CekMahasiswaController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KalenderAkademikController;
 use App\Http\Controllers\KegiatanMahasiswaController;
+use App\Http\Controllers\kipk\CekKhsMahasiswa;
 use App\Http\Controllers\LaporanPenerimaBeasiswaController;
 use App\Http\Controllers\LembagaBeasiswaController;
 use App\Http\Controllers\MahasiswaController;
@@ -61,7 +62,13 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::get('/master/sync/penerima-beasiswa', [SyncController::class, 'penerimaBeasiswa'])->name('master.sync.penerima-beasiswa');
     Route::get('/master/sync/jadwal-pertemuan', [SyncController::class, 'jadwalPertemuan'])->name('master.sync.jadwal-pertemuan');
     Route::get('/master/sync/jadwal-pertemuan-absensi', [SyncController::class, 'jadwalPertemuanAbsensi'])->name('master.sync.jadwal-pertemuan-absensi');
+
+    Route::prefix('kipk')->name('kipk.')->group(function () {
+        Route::get('/', [CekKhsMahasiswa::class, 'index'])->name('index');
+        Route::post('/', [CekKhsMahasiswa::class, 'store'])->name('store');
+    });
 });
+
 
 Route::prefix('neo-feeder')->name('neo-feeder.')->group(function () {
     Route::get('cek-krs', [CekMahasiswaController::class, 'cekKrs'])->name('cekkrs');

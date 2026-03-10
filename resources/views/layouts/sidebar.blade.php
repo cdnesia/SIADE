@@ -51,6 +51,13 @@
                 ['title' => 'Keuangan', 'route' => 'laporan.keuangan', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
+        [
+            'title' => 'KIP Kuliah',
+            'icon' => 'bx bx-file',
+            'children' => [
+                ['title' => 'Cek IP', 'route' => 'kipk.index', 'icon' => 'bx bx-radio-circle'],
+            ],
+        ],
     ];
 @endphp
 
