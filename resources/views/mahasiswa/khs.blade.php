@@ -15,7 +15,7 @@
                                 <th>Nama Mata Kuliah</th>
                                 <th style="width: 100px">Nilai Angka</th>
                                 <th style="width: 100px">Nilai Huruf</th>
-                                @can($modul . '.detail.khs.update-nilai')
+                                @can($modul . '.khs.update-nilai')
                                     <th style="width: 200px">Perbaikan Nilai</th>
                                 @endcan
                             </tr>
@@ -28,11 +28,10 @@
                                     <td>{{ $item['nama_mata_kuliah'] }}</td>
                                     <td class="nilai-angka">{{ $item['nilai_angka'] }}</td>
                                     <td class="nilai-huruf">{{ $item['nilai_huruf'] }}</td>
-                                    @can($modul . '.detail.khs.update-nilai')
+                                    @can($modul . '.khs.update-nilai')
                                         <td>
                                             <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control nilai-update"
-                                                    data-id="{{ $item['encrypted_id'] }}" placeholder="Nilai Update">
+                                                <input type="text" class="form-control nilai-update" placeholder="Nilai Update">
                                                 <button class="btn btn-outline-success btn-update"
                                                     data-id="{{ $item['encrypted_id'] }}">
                                                     <i class="bx bx-check-circle me-0"></i>
@@ -87,7 +86,7 @@
             let nilai = row.find('.nilai-update').val();
 
             $.ajax({
-                url: "/mahasiswa/detail/khs/" + id + "/update-nilai",
+                url: "/mahasiswa/khs/" + id + "/update-nilai",
                 type: "POST",
                 data: {
                     nilai: nilai,

@@ -21,7 +21,12 @@ class DataService
     public function krs($npm = null)
     {
         $npm = Crypt::decrypt($npm);
-        $krsRaw = KRS::with(['jadwal', 'matakuliah', 'hari'])
+        $krsRaw = KRS::with([
+            'jadwal',
+            'mataKuliahJadwal',
+            'mataKuliahLangsung',
+            'hari'
+        ])
             ->where('npm', $npm)
             ->get();
 
@@ -103,6 +108,33 @@ class DataService
 
         $responseData = $response->json();
 
+        $data = $responseData['data'] ?? [];
+
+        if (empty($data)) {
+            return [];
+        }
+        return $data;
+    }
+    public function dataDosen()
+    {
+        $url = "https://api.umjambi.ac.id/";
+        $timestamp = time();
+        $nonce = Str::uuid()->toString();
+        $path = 'api/data-dosen';
+
+        $body = json_encode([]);
+
+        $data = $timestamp . $nonce . 'POST' . $path . $body;
+        $signature = hash_hmac('sha256', $data, config('services.hmac_secret'));
+        $response = Http::withHeaders([
+            'X-API-KEY'   => config('services.hmac_api_key'),
+            'X-TIMESTAMP' => $timestamp,
+            'X-NONCE'     => $nonce,
+            'X-SIGNATURE' => $signature,
+        ])->withBody($body, 'application/json')
+            ->post($url . $path);
+
+        $responseData = $response->json();
         $data = $responseData['data'] ?? [];
 
         if (empty($data)) {

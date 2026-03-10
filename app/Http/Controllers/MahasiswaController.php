@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Fakultas;
+use App\Models\KelasPerkuliahan;
+use App\Models\KRS;
+use App\Models\KurikulumProdi;
 use App\Models\Mahasiswa;
+use App\Models\Prodi;
 use App\Models\SkalaNilai;
 use App\Services\DataService;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -38,16 +43,17 @@ class MahasiswaController extends Controller
                 ->addIndexColumn()
                 ->addColumn('aksi', function ($row) {
                     $btn = '';
-                    if (auth('web')->user()->can($this->modul . '.edit')) {
-                        $btn .= '<a href="' . route($this->modul . '.edit', Crypt::encrypt($row->id)) . '" class="btn btn-sm btn-primary me-1"><i class="bx bx-message-square-edit me-0"></i></a>';
-                    }
-                    if (auth('web')->user()->can($this->modul . '.destroy')) {
-                        $btn .= '<form action="' . route($this->modul . '.destroy', Crypt::encrypt($row->id)) . '" method="POST" style="display:inline-block;">
-                            ' . csrf_field() . '
-                            ' . method_field('DELETE') . '
-                            <button type="submit" class="btn btn-sm btn-danger me-1" onclick="return confirm(\'Yakin ingin menghapus?\')"><i class="bx bx-message-square-x me-0"></i></button>
-                         </form>';
-                    }
+                    // if (auth('web')->user()->can($this->modul . '.edit')) {
+                    //     $btn .= '<a href="' . route($this->modul . '.edit', Crypt::encrypt($row->id)) . '" class="btn btn-sm btn-primary me-1"><i class="bx bx-message-square-edit me-0"></i></a>';
+                    // }
+                    // if (auth('web')->user()->can($this->modul . '.destroy')) {
+                    //     $btn .= '<form action="' . route($this->modul . '.destroy', Crypt::encrypt($row->id)) . '" method="POST" style="display:inline-block;">
+                    //         ' . csrf_field() . '
+                    //         ' . method_field('DELETE') . '
+                    //         <button type="submit" class="btn btn-sm btn-danger me-1" onclick="return confirm(\'Yakin ingin menghapus?\')"><i class="bx bx-message-square-x me-0"></i></button>
+                    //      </form>';
+                    // }
+                    $btn .= '<a href="' . route($this->modul . '.show', Crypt::encrypt($row->id)) . '" class="btn btn-sm btn-info me-1"><i class="bx bx-search-alt me-0"></i>Detail</a>';
                     if (auth('web')->user()->can($this->modul . '.detail.krs')) {
                         $btn .= '<form action="' . route($this->modul . '.detail.krs', Crypt::encrypt($row->npm)) . '" method="POST" style="display:inline-block;">
                             ' . csrf_field() . '
@@ -69,9 +75,114 @@ class MahasiswaController extends Controller
     }
     public function create() {}
     public function store() {}
-    public function show() {}
+    public function show(Request $request, $id, DataService $dataService)
+    {
+        $page = $request->input('p');
+
+        $id = Crypt::decrypt($id);
+
+        $masterProdi = Prodi::all()->keyBy('kode_program_studi');
+        $masterFakultas = Fakultas::all()->keyBy('id');
+        $masterKelas = KelasPerkuliahan::all()->keyBy('id');
+        $masterJenisPendaftaran = DB::table('master_jenis_pendaftaran')->get()->keyBy('id');
+        $masterDosen = collect($dataService->dataDosen())
+            ->map(function ($item) {
+                return [
+                    'id' => $item['id'],
+                    'nama_lengkap' => $item['nama_lengkap'],
+                    'nidn' => $item['nidn'] ?? $item['nik']
+                ];
+            })
+            ->keyBy('id');
+
+        $mahasiswa = Mahasiswa::where('id', $id)->get()->map(function ($item) use ($masterProdi, $masterKelas, $masterJenisPendaftaran, $masterDosen, $masterFakultas) {
+            return [
+                'id' => Crypt::encrypt($item->id),
+                'nama_mahasiswa' => $item->nama_mahasiswa,
+                'npm' => $item->npm,
+                'tahun_angkatan' => $item->tahun_angkatan,
+                'nama_fakultas' => $masterFakultas[$masterProdi[$item->kode_program_studi]->fakultas_id]->nama_fakultas_idn,
+                'kode_program_studi' => $item->kode_program_studi,
+                'nama_program_studi' => $masterProdi[$item->kode_program_studi]->nama_program_studi_idn,
+                'program_kuliah_id' => $item->program_kuliah_id,
+                'nama_program_kuliah' => $masterKelas[$item->program_kuliah_id]->nama_program_perkuliahan,
+                'jenis_pendaftaran_id' => $item->jenis_pendaftaran_id,
+                'nama_jenis_pendaftaran' => $masterJenisPendaftaran[$item->jenis_pendaftaran_id]->nama_jenis_pendaftaran,
+                'pa_id' => $item->pa_id,
+                'nama_pa' => $masterDosen[$item->pa_id]['nama_lengkap'],
+                'nidn_pa' => $masterDosen[$item->pa_id]['nidn'],
+            ];
+        })->first();
+
+        $d['krs'] = $dataService->krs(Crypt::encrypt($mahasiswa['npm']));
+        $d['mahasiswa'] = $mahasiswa;
+        $d['page'] = $page;
+        return view('mahasiswa.show', $d);
+    }
     public function edit() {}
     public function update() {}
+    public function krsCreate(Request $request, $npm)
+    {
+        if ($request->ajax()) {
+            $npm = Crypt::decrypt($npm);
+
+            $mahasiswa = Mahasiswa::where('npm', $npm)->firstOrFail();
+            $kode_program_studi = $mahasiswa->kode_program_studi;
+            $tahun_angkatan = $mahasiswa->tahun_angkatan;
+
+            $kurikulum = DB::table('master_kurikulum_prodi')
+                ->where('kode_program_studi', $kode_program_studi)
+                ->where('status', 'A')
+                ->whereJsonContains('tahun_angkatan', (int) $tahun_angkatan)
+                ->first();
+
+            $mataKuliah = collect();
+
+            if ($kurikulum) {
+                $mataKuliah = DB::table('master_kurikulum_matakuliah')
+                    ->where('kurikulum_id', $kurikulum->kurikulum_id)
+                    ->where('kode_program_studi', $kode_program_studi)
+                    ->where('semester', 6)
+                    ->get();
+            }
+
+            foreach ($mataKuliah as $mk) {
+                $cek = DB::table('tbl_mahasiswa_krs')
+                    ->where('npm', $npm)
+                    ->where('mata_kuliah_id', $mk->id)
+                    ->exists();
+
+                if (!$cek) {
+                    DB::table('tbl_mahasiswa_krs')->insert([
+                        'npm' => $npm,
+                        'mata_kuliah_id' => $mk->id,
+                        'jadwal_id' => 0,
+                        'kode_tahun_akademik' => '20252',
+                        'persetujuan_pa' => now(),
+                        'datetime_persetujuan_pa' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+            return response()->json([
+                'success' => true,
+                'message' => 'KRS telah ditambahkan.'
+            ]);
+        }
+    }
+    public function krsEdit() {}
+    public function krsDestroy($id)
+    {
+        $id = Crypt::decrypt($id);
+
+        KRS::where('id', $id)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data KRS berhasil dihapus'
+        ]);
+    }
     public function krs($id, DataService $service)
     {
         $d['krs'] = $service->krs($id);

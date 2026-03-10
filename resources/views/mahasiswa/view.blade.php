@@ -49,6 +49,7 @@
                 processing: true,
                 serverSide: true,
                 scrollX: true,
+                stateSave: true,
                 ajax: "{{ url()->current() }}",
                 language: {
                     processing: '<i class="bx bx-loader bx-spin"></i> Mohon Tunggu...'
