@@ -27,12 +27,12 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
 
     Route::post('mahasiswa/sync', [MahasiswaController::class, 'sync'])->name('mahasiswa.sync');
-    Route::get('mahasiswa/krs/{npm}/create', [MahasiswaController::class, 'krsCreate'])->name('mahasiswa.krs.create');
+    Route::post('mahasiswa/krs/{npm}/create', [MahasiswaController::class, 'krsCreate'])->name('mahasiswa.krs.create');
     Route::post('mahasiswa/detail/krs/{id}', [MahasiswaController::class, 'krs'])->name('mahasiswa.detail.krs');
     Route::post('mahasiswa/detail/krs/{id}/edit', [MahasiswaController::class, 'krsEdit'])->name('mahasiswa.detail.krs.edit');
     Route::delete('mahasiswa/detail/krs/{id}/destroy', [MahasiswaController::class, 'krsDestroy'])->name('mahasiswa.detail.krs.destroy');
     Route::post('mahasiswa/khs/{id}/update-nilai', [MahasiswaController::class, 'khsUpdateNilai'])->name('mahasiswa.khs.update-nilai');
-    Route::post('mahasiswa/detail/khs/{id}', [MahasiswaController::class, 'khs'])->name('mahasiswa.detail.khs');
+    Route::get('mahasiswa/detail/khs/{id}', [MahasiswaController::class, 'khs'])->name('mahasiswa.detail.khs');
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('mahasiswa-ptrpl', MahasiswaPTRPLController::class);
 

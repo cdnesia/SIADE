@@ -2,8 +2,17 @@
 @section('content')
     @foreach ($krs as $key => $value)
         <div class="card">
-            <div class="card-header d-flex align-items-center mt-2">
-                <h6>Tahun Akademik {{ $key }}-Semester {{ $value['semester'] }}</h6>
+            <div class="card-header d-flex align-items-center">
+                <h6 class="mb-0">Tahun Akademik {{ $key }}-Semester {{ $value['semester'] }}</h6>
+                <div class="ms-auto">
+                    @can($modul . '.krs.create')
+                        <a href="#" class="btn btn-sm btn-info kontrakMK" data-tahun-akademik="{{ $key }}"
+                            data-npm="{{ Crypt::decrypt(request()->segment(4)) }}" data-bs-toggle="modal"
+                            data-bs-target="#exampleModal">
+                            <i class="bx bx-list-check mr-1"></i> Kontrak Mata Kuliah
+                        </a>
+                    @endcan
+                </div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -31,7 +40,8 @@
                                     @can($modul . '.khs.update-nilai')
                                         <td>
                                             <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control nilai-update" placeholder="Nilai Update">
+                                                <input type="text" class="form-control nilai-update"
+                                                    placeholder="Nilai Update">
                                                 <button class="btn btn-outline-success btn-update"
                                                     data-id="{{ $item['encrypted_id'] }}">
                                                     <i class="bx bx-check-circle me-0"></i>
@@ -53,6 +63,39 @@
             </div>
         </div>
     @endforeach
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('mahasiswa.krs.create', request()->segment(4)) }}" method="post">
+                    @csrf
+                    <div class="modal-body">
+                        <input type="text" name="kode_tahun_akademik" id="fkode_tahun_akademik" value="">
+                        <div class="row">
+                            @foreach ($matakuliah as $item)
+                                <div class="col-md-6">
+                                    <div class="form-check form-check-success">
+                                        <input class="form-check-input" name="matakuliah[]" type="checkbox"
+                                            value="{{ $item['id'] }}" id="mk{{ $item['id'] }}">
+                                        <label class="form-check-label" for="mk{{ $item['id'] }}">
+                                            {{ $item['kode_mata_kuliah'] . ' ' . $item['nama_mata_kuliah_idn'] }}
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Simpan Mata Kuliah</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 @push('css')
     <link href="{{ asset('') }}assets/plugins/datatable/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
@@ -61,17 +104,6 @@
     <script src="{{ asset('') }}assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
     <script src="{{ asset('') }}assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('.krsTable').each(function() {
-                $(this).DataTable({
-                    lengthChange: false,
-                    info: false,
-                    paging: false,
-                    scrollX: true,
-                });
-            });
-        });
-
         $.ajaxSetup({
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -106,6 +138,13 @@
                     console.log(xhr.responseText);
                 }
             });
+        });
+
+        $('.kontrakMK').click(function() {
+            let tahunAkademik = $(this).data('tahun-akademik');
+            let npm = $(this).data('npm');
+            $('#fkode_tahun_akademik').val(tahunAkademik);
+            $('#exampleModalLabel').text('Kontrak Mata Kuliah TA ' + tahunAkademik + ' NPM ' + npm);
 
         });
     </script>

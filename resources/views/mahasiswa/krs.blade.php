@@ -57,17 +57,17 @@
                                     <td>{{ $item['dosen_id'] }}</td>
                                     <td>{{ $item['kelompok'] }}</td>
                                     @canany([$modul . '.detail.krs.destroy', $modul . '.detail.khs.edit'])
-                                        <td>
+                                        <td class="d-flex gap-1 ms-auto">
                                             @can($modul . '.detail.krs.destroy')
                                                 <form action="{{ route($modul . '.detail.krs.destroy', $item['encrypted_id']) }}"
                                                     method="POST" class="form-delete">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit">Hapus</button>
+                                                    <button class="btn btn-sm btn-danger" type="submit"><i class="bx bx-trash me-0"></i></button>
                                                 </form>
                                             @endcan
                                             @can($modul . '.detail.krs.edit')
-                                                edit
+                                                <a href="" class="btn btn-sm btn-warning" ><i class="bx bx-pencil me-0"></i></a>
                                             @endcan
                                         </td>
                                     @endcanany
@@ -87,16 +87,6 @@
     <script src="{{ asset('') }}assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
     <script src="{{ asset('') }}assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('.krsTable').each(function() {
-                $(this).DataTable({
-                    lengthChange: false,
-                    info: false,
-                    paging: false,
-                    scrollX: true,
-                });
-            });
-        });
 
         $(document).on('submit', '.form-delete', function(e) {
             e.preventDefault();

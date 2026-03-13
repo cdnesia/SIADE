@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Fakultas;
 use App\Models\KelasPerkuliahan;
 use App\Models\KRS;
+use App\Models\KurikulumMataKuliah;
 use App\Models\KurikulumProdi;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
@@ -61,8 +62,7 @@ class MahasiswaController extends Controller
                          </form>';
                     }
                     if (auth('web')->user()->can($this->modul . '.detail.khs')) {
-                        $btn .= '<form action="' . route($this->modul . '.detail.khs', Crypt::encrypt($row->npm)) . '" method="POST" style="display:inline-block;">
-                            ' . csrf_field() . '
+                        $btn .= '<form action="' . route($this->modul . '.detail.khs', Crypt::encrypt($row->npm)) . '" method="get" style="display:inline-block;">
                             <button type="submit" class="btn btn-sm btn-info me-1"><i class="bx bx-search-alt mr-1"></i>KHS</button>
                          </form>';
                     }
@@ -123,61 +123,30 @@ class MahasiswaController extends Controller
     public function update() {}
     public function krsCreate(Request $request, $npm)
     {
-        if ($request->ajax()) {
-            $npm = Crypt::decrypt($npm);
+        $npm = Crypt::decrypt($npm);
+        $kode_tahun_akademik = $request->kode_tahun_akademik;
+        $matakuliah = $request->matakuliah;
 
-            $mahasiswa = Mahasiswa::where('npm', $npm)->firstOrFail();
-            $kode_program_studi = $mahasiswa->kode_program_studi;
-            $tahun_angkatan = $mahasiswa->tahun_angkatan;
+        $mahasiswa = Mahasiswa::where('npm', $npm)->firstOrFail();
 
-            $kurikulum = DB::table('master_kurikulum_prodi')
-                ->where('kode_program_studi', $kode_program_studi)
-                ->where('status', 'A')
-                ->whereJsonContains('tahun_angkatan', (int) $tahun_angkatan)
-                ->first();
-
-            $mataKuliah = collect();
-
-            if ($kurikulum) {
-                $mataKuliah = DB::table('master_kurikulum_matakuliah')
-                    ->where('kurikulum_id', $kurikulum->kurikulum_id)
-                    ->where('kode_program_studi', $kode_program_studi)
-                    ->where('semester', 6)
-                    ->get();
-            }
-
-            foreach ($mataKuliah as $mk) {
-                $cek = DB::table('tbl_mahasiswa_krs')
-                    ->where('npm', $npm)
-                    ->where('mata_kuliah_id', $mk->id)
-                    ->exists();
-
-                if (!$cek) {
-                    DB::table('tbl_mahasiswa_krs')->insert([
-                        'npm' => $npm,
-                        'mata_kuliah_id' => $mk->id,
-                        'jadwal_id' => 0,
-                        'kode_tahun_akademik' => '20252',
-                        'persetujuan_pa' => now(),
-                        'datetime_persetujuan_pa' => now(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-            }
-            return response()->json([
-                'success' => true,
-                'message' => 'KRS telah ditambahkan.'
+        foreach ($matakuliah as $key => $value) {
+            DB::table('tbl_mahasiswa_krs')->insert([
+                'npm' => $npm,
+                'mata_kuliah_id' => $value,
+                'jadwal_id' => 0,
+                'kode_tahun_akademik' => $kode_tahun_akademik,
+                'persetujuan_pa' => now(),
+                'datetime_persetujuan_pa' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
+        return back()->with('success', 'Mata kuliah berhasil dikontrak');
     }
-    public function krsEdit() {}
     public function krsDestroy($id)
     {
         $id = Crypt::decrypt($id);
-
         KRS::where('id', $id)->delete();
-
         return response()->json([
             'success' => true,
             'message' => 'Data KRS berhasil dihapus'
@@ -185,12 +154,47 @@ class MahasiswaController extends Controller
     }
     public function krs($id, DataService $service)
     {
-        $d['krs'] = $service->krs($id);
+        $krs = $service->krs($id);
+        $flatKrs = collect($krs)
+            ->pluck('krs')
+            ->flatten(1);
+
+        $kodeMkArray = $flatKrs->map(function ($item) {
+            return $item['kode_mata_kuliah'];
+        });
+
+        $dataMahasiswa = Mahasiswa::where('npm', Crypt::decrypt($id))->first();
+        $tahun_angkatan = $dataMahasiswa->tahun_angkatan;
+        $kode_program_studi = $dataMahasiswa->kode_program_studi;
+
+        $kurikulum_id = KurikulumProdi::whereJsonContains('tahun_angkatan', (int)$tahun_angkatan)->where('kode_program_studi', $kode_program_studi)->pluck('kurikulum_id')->first();
+
+        $mataKuliah = KurikulumMataKuliah::where('kode_program_studi', $kode_program_studi)->where('kurikulum_id', $kurikulum_id)->whereNotIn('kode_mata_kuliah', $kodeMkArray)->get()->toArray();
+
+        $d['krs'] = $krs;
+        $d['matakuliah'] = $mataKuliah;
         return view('mahasiswa.krs', $d);
     }
     public function khs($id, DataService $service)
     {
-        $d['krs'] = $service->krs($id);
+        $krs = $service->krs($id);
+        $flatKrs = collect($krs)
+            ->pluck('krs')
+            ->flatten(1);
+
+        $kodeMkArray = $flatKrs->map(function ($item) {
+            return $item['kode_mata_kuliah'];
+        });
+
+        $dataMahasiswa = Mahasiswa::where('npm', Crypt::decrypt($id))->first();
+        $tahun_angkatan = $dataMahasiswa->tahun_angkatan;
+        $kode_program_studi = $dataMahasiswa->kode_program_studi;
+
+        $kurikulum_id = KurikulumProdi::whereJsonContains('tahun_angkatan', (int)$tahun_angkatan)->where('kode_program_studi', $kode_program_studi)->pluck('kurikulum_id')->first();
+
+        $mataKuliah = KurikulumMataKuliah::where('kode_program_studi', $kode_program_studi)->where('kurikulum_id', $kurikulum_id)->whereNotIn('kode_mata_kuliah', $kodeMkArray)->get()->toArray();
+        $d['krs'] = $krs;
+        $d['matakuliah'] = $mataKuliah;
         return view('mahasiswa.khs', $d);
     }
     public function khsUpdateNilai($id, Request $request)
