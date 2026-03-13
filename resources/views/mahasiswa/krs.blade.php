@@ -3,10 +3,6 @@
     <div class="card">
         <div class="card-header d-flex align-items-center">
             <div class="ms-auto">
-                @can($modul . '.index')
-                    <a href="{{ route($modul . '.krs.create', request()->segment(4)) }}" class="btn btn-sm btn-info me-0"><i
-                            class="bx bx-list-check mr-1"></i> Kontrak Mata Kuliah</a>
-                @endcan
                 <a href="{{ route($modul . '.index') }}" class="btn btn-sm btn-warning me-0"><i
                         class="bx bx-arrow-back mr-1"></i> Kembali</a>
             </div>
