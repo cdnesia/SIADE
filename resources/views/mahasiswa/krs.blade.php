@@ -14,10 +14,8 @@
                 <h6 class="mb-0">Tahun Akademik {{ $key }}</h6>
                 <h6 class="mb-0"> -Semester {{ $value['semester'] }}</h6>
                 <div class="ms-auto">
-                    @can($modul . '.create')
-                        <a href="{{ route($modul . '.create') }}" class="btn btn-sm btn-primary me-0"><i
-                                class="bx bx-printer mr-1"></i> Cetak</a>
-                    @endcan
+                    <a href="#" class="btn btn-sm btn-primary me-0"><i
+                            class="bx bx-printer mr-1"></i> Cetak</a>
                 </div>
             </div>
             <div class="card-body">
@@ -59,11 +57,13 @@
                                                     method="POST" class="form-delete">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button class="btn btn-sm btn-danger" type="submit"><i class="bx bx-trash me-0"></i></button>
+                                                    <button class="btn btn-sm btn-danger" type="submit"><i
+                                                            class="bx bx-trash me-0"></i></button>
                                                 </form>
                                             @endcan
                                             @can($modul . '.detail.krs.edit')
-                                                <a href="" class="btn btn-sm btn-warning" ><i class="bx bx-pencil me-0"></i></a>
+                                                <a href="" class="btn btn-sm btn-warning"><i
+                                                        class="bx bx-pencil me-0"></i></a>
                                             @endcan
                                         </td>
                                     @endcanany
@@ -83,7 +83,6 @@
     <script src="{{ asset('') }}assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
     <script src="{{ asset('') }}assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
     <script>
-
         $(document).on('submit', '.form-delete', function(e) {
             e.preventDefault();
 
