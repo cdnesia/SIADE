@@ -33,7 +33,7 @@
                                 <th>Dosen Pengampu</th>
                                 <th>Kelompok</th>
                                 @canany([$modul . '.detail.krs.destroy', $modul . '.detail.krs.edit'])
-                                    <th>Aksi</th>
+                                    <th style="width: 80px">Aksi</th>
                                 @endcanany
                             </tr>
                         </thead>

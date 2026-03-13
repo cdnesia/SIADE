@@ -155,24 +155,8 @@ class MahasiswaController extends Controller
     public function krs($id, DataService $service)
     {
         $krs = $service->krs($id);
-        $flatKrs = collect($krs)
-            ->pluck('krs')
-            ->flatten(1);
-
-        $kodeMkArray = $flatKrs->map(function ($item) {
-            return $item['kode_mata_kuliah'];
-        });
-
-        $dataMahasiswa = Mahasiswa::where('npm', Crypt::decrypt($id))->first();
-        $tahun_angkatan = $dataMahasiswa->tahun_angkatan;
-        $kode_program_studi = $dataMahasiswa->kode_program_studi;
-
-        $kurikulum_id = KurikulumProdi::whereJsonContains('tahun_angkatan', (int)$tahun_angkatan)->where('kode_program_studi', $kode_program_studi)->pluck('kurikulum_id')->first();
-
-        $mataKuliah = KurikulumMataKuliah::where('kode_program_studi', $kode_program_studi)->where('kurikulum_id', $kurikulum_id)->whereNotIn('kode_mata_kuliah', $kodeMkArray)->get()->toArray();
 
         $d['krs'] = $krs;
-        $d['matakuliah'] = $mataKuliah;
         return view('mahasiswa.krs', $d);
     }
     public function khs($id, DataService $service)
@@ -192,7 +176,12 @@ class MahasiswaController extends Controller
 
         $kurikulum_id = KurikulumProdi::whereJsonContains('tahun_angkatan', (int)$tahun_angkatan)->where('kode_program_studi', $kode_program_studi)->pluck('kurikulum_id')->first();
 
-        $mataKuliah = KurikulumMataKuliah::where('kode_program_studi', $kode_program_studi)->where('kurikulum_id', $kurikulum_id)->whereNotIn('kode_mata_kuliah', $kodeMkArray)->get()->toArray();
+        $mataKuliah = KurikulumMataKuliah::where('kode_program_studi', $kode_program_studi)
+            ->where('kurikulum_id', $kurikulum_id)
+            ->whereNotIn('kode_mata_kuliah', $kodeMkArray)
+            ->orderBy('semester')
+            ->get();
+
         $d['krs'] = $krs;
         $d['matakuliah'] = $mataKuliah;
         return view('mahasiswa.khs', $d);

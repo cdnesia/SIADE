@@ -63,8 +63,9 @@
             </div>
         </div>
     @endforeach
+    {{-- @dd($matakuliah) --}}
     <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel"></h5>
@@ -73,7 +74,7 @@
                 <form action="{{ route('mahasiswa.krs.create', request()->segment(4)) }}" method="post">
                     @csrf
                     <div class="modal-body">
-                        <input type="text" name="kode_tahun_akademik" id="fkode_tahun_akademik" value="">
+                        <input type="hidden" name="kode_tahun_akademik" id="fkode_tahun_akademik" value="">
                         <div class="row">
                             @foreach ($matakuliah as $item)
                                 <div class="col-md-6">
@@ -81,7 +82,7 @@
                                         <input class="form-check-input" name="matakuliah[]" type="checkbox"
                                             value="{{ $item['id'] }}" id="mk{{ $item['id'] }}">
                                         <label class="form-check-label" for="mk{{ $item['id'] }}">
-                                            {{ $item['kode_mata_kuliah'] . ' ' . $item['nama_mata_kuliah_idn'] }}
+                                            {{ $item['kode_mata_kuliah'] . ' ' . $item['nama_mata_kuliah_idn'] . ' [' . $item['semester'] . ']' }}
                                         </label>
                                     </div>
                                 </div>
