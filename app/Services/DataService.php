@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\KRS;
 use App\Models\Mahasiswa;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -19,7 +20,7 @@ class DataService
     {
         //
     }
-    private function expandTerms(int $start, int $end): array
+    public function expandTerms(int $start, int $end): array
     {
         $y  = intdiv($start, 10);
         $s  = $start % 10;
@@ -35,6 +36,17 @@ class DataService
             }
         }
         return $out;
+    }
+    public function tahunAkademikAktif($kodeProdi = null)
+    {
+        $today = Carbon::today()->toDateString();
+        $query = DB::connection('db_siade')
+            ->table('master_tahun_akademik')
+            ->where('status', 'A')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today);
+        $query->whereJsonContains('kode_program_studi', $kodeProdi);
+        return $query->orderByDesc('id')->value('kode_tahun_akademik');
     }
     public function krs($npm = null)
     {
@@ -57,10 +69,11 @@ class DataService
         $total_sks_kumulatif = 0;
         $total_bobot_kumulatif = 0;
 
-        $mahasiswa = Mahasiswa::where('npm', $npm)->first();
+        $mahasiswa = Mahasiswa::where('npm', $npm)->firstOrFail();
         $tahun_angkatan = $mahasiswa->tahun_angkatan;
-
-        $tahunAkademikDitempuh = $this->expandTerms($tahun_angkatan, 20252);
+        $kode_program_studi = $mahasiswa->kode_program_studi;
+        $tahunAkademikAktif = $this->tahunAkademikAktif($kode_program_studi) ?? $tahun_angkatan;
+        $tahunAkademikDitempuh = $this->expandTerms($tahun_angkatan, $tahunAkademikAktif);
 
         foreach ($tahunAkademikDitempuh as $key => $value) {
             if (!isset($krs[$value])) {

@@ -16,6 +16,7 @@
                             <th>NIM</th>
                             <th>Nama Mahasiswa</th>
                             <th>Program Studi</th>
+                            <th>Status KIPK</th>
 
                             <?php foreach ($tahun_akademik as $tahun): ?>
                             <th><?= $tahun ?></th>
@@ -42,6 +43,7 @@
                             <td><?= $key ?></td>
                             <td class="text-left"><?= $mhs['nama_mahasiswa'] ?></td>
                             <td class="text-left"><?= $mhs['program_studi'] ?></td>
+                            <td class="text-left"><?= $mhs['status_kipk'] ?></td>
 
                             <?php foreach ($tahun_akademik as $tahun): ?>
                             <td>

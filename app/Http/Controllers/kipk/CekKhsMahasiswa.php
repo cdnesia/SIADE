@@ -5,6 +5,7 @@ namespace App\Http\Controllers\kipk;
 use App\Http\Controllers\Controller;
 use App\Models\KRS;
 use App\Models\Mahasiswa;
+use App\Models\PenerimaBeasiswa;
 use App\Models\Prodi;
 use App\Models\TahunAkademik;
 use Illuminate\Http\Request;
@@ -26,6 +27,20 @@ class CekKhsMahasiswa extends Controller
 
         $tahun_akademik = $request->input('tahun_akademik', []);
 
+        $cekBeasiswa = PenerimaBeasiswa::whereIn('npm', $nim_array)
+            ->get()
+            ->keyBy('npm');
+
+        $masterMahasiswa = Mahasiswa::whereIn('npm', $nim_array)
+            ->get()
+            ->keyBy('npm');
+
+        $kodeProdiList = $masterMahasiswa->pluck('kode_program_studi')->unique();
+
+        $masterProdi = Prodi::whereIn('kode_program_studi', $kodeProdiList)
+            ->get()
+            ->keyBy('kode_program_studi');
+
         $data_db = KRS::with([
             'jadwal',
             'mataKuliahJadwal',
@@ -37,17 +52,12 @@ class CekKhsMahasiswa extends Controller
 
         $krsRaw = $data_db->sortBy([
             fn($a, $b) => $a->kode_tahun_akademik <=> $b->kode_tahun_akademik,
-            fn($b, $a) => ($a->hari->nama_hari ?? '') <=> ($b->hari->nama_hari ?? '')
+            fn($a, $b) => ($a->hari->nama_hari ?? '') <=> ($b->hari->nama_hari ?? '')
         ]);
 
-        $total_sks_kumulatif = 0;
-        $total_bobot_kumulatif = 0;
-
-        $masterMahasiswa = Mahasiswa::get()->keyBy('npm');
-        $masterProdi = Prodi::get()->keyBy('kode_program_studi');
-
-
         $krs = [];
+        $total_sks_kumulatif = [];
+        $total_bobot_kumulatif = [];
 
         foreach ($krsRaw as $row) {
 
@@ -59,30 +69,38 @@ class CekKhsMahasiswa extends Controller
                 $kodeProdi = $masterMahasiswa[$nim]->kode_program_studi ?? null;
                 $prodi = $masterProdi[$kodeProdi]->nama_program_studi_idn ?? '';
 
-                $krs[$nim] = [];
-                $krs[$nim]['nama_mahasiswa'] = $nama;
-                $krs[$nim]['program_studi'] = $prodi;
+                $krs[$nim] = [
+                    'nama_mahasiswa' => $nama,
+                    'program_studi'  => $prodi,
+                    'status_kipk'    => isset($cekBeasiswa[$nim])
+                        ? 'Penerima KIPK'
+                        : 'Bukan Penerima KIPK'
+                ];
 
-                $total_sks_kumulatif = 0;
-                $total_bobot_kumulatif = 0;
+                $total_sks_kumulatif[$nim] = 0;
+                $total_bobot_kumulatif[$nim] = 0;
             }
 
-            $ta = $row['kode_tahun_akademik'];
+            $ta = $row->kode_tahun_akademik;
+            if (!in_array($ta, $tahun_akademik)) {
+                continue;
+            }
 
             if (!isset($krs[$nim][$ta])) {
 
-                $krs[$nim][$ta] = [];
-                $krs[$nim][$ta]['jumlah_sks'] = 0;
-                $krs[$nim][$ta]['total_bobot'] = 0;
-                $krs[$nim][$ta]['ips'] = 0;
-                $krs[$nim][$ta]['ipk'] = 0;
+                $krs[$nim][$ta] = [
+                    'jumlah_sks'  => 0,
+                    'total_bobot' => 0,
+                    'ips'         => 0,
+                    'ipk'         => 0
+                ];
             }
 
             $sks = $row['matakuliah']['sks_mata_kuliah'] ?? 0;
-            $bobot = $row['nilai_bobot'] ?? 0;
+            $bobot = $row->nilai_bobot ?? 0;
 
-            $total_sks_kumulatif += $sks;
-            $total_bobot_kumulatif += $bobot * $sks;
+            $total_sks_kumulatif[$nim] += $sks;
+            $total_bobot_kumulatif[$nim] += $bobot * $sks;
 
             $krs[$nim][$ta]['jumlah_sks'] += $sks;
             $krs[$nim][$ta]['total_bobot'] += $bobot * $sks;
@@ -93,11 +111,28 @@ class CekKhsMahasiswa extends Controller
                 : 0;
 
             $krs[$nim][$ta]['ipk'] =
-                $total_sks_kumulatif
-                ? round($total_bobot_kumulatif / $total_sks_kumulatif, 2)
+                $total_sks_kumulatif[$nim]
+                ? round($total_bobot_kumulatif[$nim] / $total_sks_kumulatif[$nim], 2)
                 : 0;
         }
 
+        foreach ($nim_array as $nim) {
+
+            if (!isset($krs[$nim])) {
+
+                $nama = $masterMahasiswa[$nim]->nama_mahasiswa ?? '';
+                $kodeProdi = $masterMahasiswa[$nim]->kode_program_studi ?? null;
+                $prodi = $masterProdi[$kodeProdi]->nama_program_studi_idn ?? '';
+
+                $krs[$nim] = [
+                    'nama_mahasiswa' => $nama,
+                    'program_studi'  => $prodi,
+                    'status_kipk'    => isset($cekBeasiswa[$nim])
+                        ? 'Penerima KIPK'
+                        : 'Bukan Penerima KIPK'
+                ];
+            }
+        }
 
         sort($tahun_akademik);
 
@@ -105,6 +140,7 @@ class CekKhsMahasiswa extends Controller
             'mahasiswa'      => $krs,
             'tahun_akademik' => $tahun_akademik
         ];
+
         return view('kipk.view', $data);
     }
 }
