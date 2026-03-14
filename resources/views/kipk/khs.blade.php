@@ -11,7 +11,7 @@
     @foreach ($krs as $key => $value)
         <div class="card">
             <div class="card-header d-flex align-items-center">
-                <h6 class="mb-0">Tahun Akademik {{ $key }}-Semester {{ $value['semester'] }}</h6>
+                <h6 class="mb-0">Tahun Akademik {{ $key }} - Semester {{ $value['semester'] }}</h6>
             </div>
             <div class="card-body">
                 <div class="table-responsive">

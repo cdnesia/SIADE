@@ -32,25 +32,6 @@ class AuthController extends Controller
             return redirect('/dashboard');
         }
 
-        $mahasiswa = DB::table('master_mahasiswa')->where('npm', $request->username)->first();
-
-        if ($mahasiswa && $request->password == $mahasiswa->npm) {
-            $user = User::where('email', $mahasiswa->npm)->first();
-
-            if (!$user) {
-                $user = User::create([
-                    'name' => $mahasiswa->nama_mahasiswa,
-                    'email' => $mahasiswa->npm,
-                    'password' => Hash::make($mahasiswa->npm),
-                ]);
-            }
-
-            Auth::login($user);
-            $request->session()->regenerate();
-
-            return redirect('/dashboard');
-        }
-
         return back()->withErrors([
             'username' => 'Username atau password salah',
         ]);
