@@ -21,7 +21,7 @@
                             <?php foreach ($tahun_akademik as $tahun): ?>
                             <th><?= $tahun ?></th>
                             <?php endforeach; ?>
-
+                            <th>Aksi</th>
                         </tr>
                     </thead>
 
@@ -50,6 +50,9 @@
                                 <?= isset($mhs[$tahun]['ips']) ? number_format($mhs[$tahun]['ips'], 2) : '-' ?>
                             </td>
                             <?php endforeach; ?>
+                            <td>
+                                <a href="{{ route('kipk.show', Crypt::encrypt($key)) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Detail</a>
+                            </td>
 
                         </tr>
                         <?php endforeach; ?>

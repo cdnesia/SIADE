@@ -66,6 +66,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::prefix('kipk')->name('kipk.')->group(function () {
         Route::get('/', [CekKhsMahasiswa::class, 'index'])->name('index');
         Route::post('/', [CekKhsMahasiswa::class, 'store'])->name('store');
+        Route::get('/{npm}', [CekKhsMahasiswa::class, 'show'])->name('show');
     });
 });
 

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\kipk;
 
 use App\Http\Controllers\Controller;
+use App\Models\KelasPerkuliahan;
 use App\Models\KRS;
 use App\Models\Mahasiswa;
 use App\Models\PenerimaBeasiswa;
 use App\Models\Prodi;
 use App\Models\TahunAkademik;
+use App\Services\DataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -142,5 +144,30 @@ class CekKhsMahasiswa extends Controller
         ];
 
         return view('kipk.view', $data);
+    }
+    public function show($npm, DataService $dataService)
+    {
+        $krs = $dataService->krs($npm);
+        $masterProdi = Prodi::all()->keyBy('kode_program_studi');
+        $masterkelas = KelasPerkuliahan::all()->keyBy('id');
+
+        $mahasiswa = Mahasiswa::where('npm', Crypt::decrypt($npm))->first();
+
+        $dataMahasiswa = null;
+
+        if ($mahasiswa) {
+            $dataMahasiswa = [
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                'npm' => $mahasiswa->npm,
+                'kode_program_studi' => $mahasiswa->kode_program_studi,
+                'nama_program_studi' => $masterProdi[$mahasiswa->kode_program_studi]->nama_program_studi_idn ?? null,
+                'program_kuliah_id' => $mahasiswa->program_kuliah_id,
+                'nama_program_kuliah' => $masterkelas[$mahasiswa->program_kuliah_id]->nama_program_perkuliahan ?? null,
+            ];
+        }
+
+        $d['krs'] = $krs;
+        $d['mahasiswa'] = $dataMahasiswa;
+        return view('kipk.khs', $d);
     }
 }

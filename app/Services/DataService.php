@@ -40,8 +40,7 @@ class DataService
     public function tahunAkademikAktif($kodeProdi = null)
     {
         $today = Carbon::today()->toDateString();
-        $query = DB::connection('db_siade')
-            ->table('master_tahun_akademik')
+        $query = DB::table('master_tahun_akademik')
             ->where('status', 'A')
             ->whereDate('tanggal_mulai', '<=', $today)
             ->whereDate('tanggal_selesai', '>=', $today);
