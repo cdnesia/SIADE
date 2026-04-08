@@ -169,10 +169,10 @@
                             <label class="form-check-label" for="19">SEMINAR PROPOSAL</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input @error('tipe') is-invalid @enderror" id="19"
+                            <input class="form-check-input @error('tipe') is-invalid @enderror" id="20"
                                 type="radio" value="SIDANG TUGAS AKHIR" name="tipe"
                                 {{ old('tipe', $data->tipe ?? '') == 'SIDANG TUGAS AKHIR' ? 'checked' : '' }}>
-                            <label class="form-check-label" for="19">SIDANG TUGAS AKHIR</label>
+                            <label class="form-check-label" for="20">SIDANG TUGAS AKHIR</label>
                         </div>
                     </div>
                 </div>
