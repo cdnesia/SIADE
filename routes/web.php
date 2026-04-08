@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Feeder\BiodataMahasiswaController;
 use App\Http\Controllers\Feeder\CekMahasiswaController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KalenderAkademikController;
@@ -73,4 +74,5 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
 
 Route::prefix('neo-feeder')->name('neo-feeder.')->group(function () {
     Route::get('cek-krs', [CekMahasiswaController::class, 'cekKrs'])->name('cekkrs');
+    Route::get('biodata-mahasiswa', [BiodataMahasiswaController::class, 'index'])->name('biodata-mahasiswa.index');
 });

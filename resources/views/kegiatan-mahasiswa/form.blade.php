@@ -149,7 +149,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Jenis Kegiatan</label>
-                    <div class="d-flex gap-3">
+                    <div class="">
                         <div class="form-check">
                             <input class="form-check-input @error('tipe') is-invalid @enderror" id="17"
                                 type="radio" value="KKN" name="tipe"
@@ -161,6 +161,18 @@
                                 type="radio" value="PKL" name="tipe"
                                 {{ old('tipe', $data->tipe ?? '') == 'PKL' ? 'checked' : '' }}>
                             <label class="form-check-label" for="18">PKL</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input @error('tipe') is-invalid @enderror" id="19"
+                                type="radio" value="SEMINAR PROPOSAL" name="tipe"
+                                {{ old('tipe', $data->tipe ?? '') == 'SEMINAR PROPOSAL' ? 'checked' : '' }}>
+                            <label class="form-check-label" for="19">SEMINAR PROPOSAL</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input @error('tipe') is-invalid @enderror" id="19"
+                                type="radio" value="SIDANG TUGAS AKHIR" name="tipe"
+                                {{ old('tipe', $data->tipe ?? '') == 'SIDANG TUGAS AKHIR' ? 'checked' : '' }}>
+                            <label class="form-check-label" for="19">SIDANG TUGAS AKHIR</label>
                         </div>
                     </div>
                 </div>
