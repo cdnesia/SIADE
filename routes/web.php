@@ -7,6 +7,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\KalenderAkademikController;
 use App\Http\Controllers\KegiatanMahasiswaController;
 use App\Http\Controllers\kipk\CekKhsMahasiswa;
+use App\Http\Controllers\LaporanKKN;
 use App\Http\Controllers\LaporanPenerimaBeasiswaController;
 use App\Http\Controllers\LembagaBeasiswaController;
 use App\Http\Controllers\MahasiswaController;
@@ -68,6 +69,10 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::get('/', [CekKhsMahasiswa::class, 'index'])->name('index');
         Route::post('/', [CekKhsMahasiswa::class, 'store'])->name('store');
         Route::get('/{npm}', [CekKhsMahasiswa::class, 'show'])->name('show');
+    });
+
+    Route::prefix('laporan-kkn')->name('laporan-kkn.')->group(function () {
+        Route::get('/', [LaporanKKN::class, 'index'])->name('index');
     });
 });
 

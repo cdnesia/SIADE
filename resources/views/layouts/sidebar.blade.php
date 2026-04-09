@@ -22,6 +22,14 @@
                 ['title' => 'Laporan Penerima Beasiswa', 'route' => 'laporan-penerima-beasiswa.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
+
+        [
+            'title' => 'KIP Kuliah',
+            'icon' => 'bx bx-file',
+            'children' => [
+                ['title' => 'Cek IP', 'route' => 'kipk.index', 'icon' => 'bx bx-radio-circle'],
+            ],
+        ],
         [
             'title' => 'Master Data',
             'icon' => 'bx bx-sitemap',
@@ -34,6 +42,14 @@
                 ['title' => 'Sync Data', 'route' => 'master.sync.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
+
+        [
+            'title' => 'Laporan',
+            'icon' => 'bx bx-file',
+            'children' => [
+                ['title' => 'KKN', 'route' => 'laporan-kkn.index', 'icon' => 'bx bx-radio-circle'],
+            ],
+        ],
         [
             'title' => 'Manajemen',
             'icon' => 'bx bx-cog',
@@ -41,21 +57,6 @@
                 ['title' => 'Pengguna', 'route' => 'users.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Roles', 'route' => 'roles.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Permissions', 'route' => 'permissions.index', 'icon' => 'bx bx-radio-circle'],
-            ],
-        ],
-        [
-            'title' => 'Laporan',
-            'icon' => 'bx bx-file',
-            'children' => [
-                ['title' => 'Mahasiswa', 'route' => 'laporan.mahasiswa', 'icon' => 'bx bx-radio-circle'],
-                ['title' => 'Keuangan', 'route' => 'laporan.keuangan', 'icon' => 'bx bx-radio-circle'],
-            ],
-        ],
-        [
-            'title' => 'KIP Kuliah',
-            'icon' => 'bx bx-file',
-            'children' => [
-                ['title' => 'Cek IP', 'route' => 'kipk.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
     ];
