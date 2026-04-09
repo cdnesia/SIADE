@@ -2,33 +2,23 @@
 @section('content')
     <div class="card">
         <div class="card-header d-flex align-items-center mt-2">
-            <h6 class="mb-2">Cek IP</h6>
+            <h6 class="mb-2">Pilih Kegiatan</h6>
         </div>
-        <form action="{{ route('kipk.store') }}" method="post" class="form gap-3">
+        <form action="{{ route('laporan-kkn.update', ['id' => Crypt::encrypt($kkn->id)]) }}" method="post" class="form gap-3">
             <div class="card-body">
                 @csrf
+                @method('PUT')
                 <div class="row">
                     <div class="col-md-6">
-                        <label class="form-label">Nomor Pokok Mahasiswa</label>
-                        <textarea class="form-control" name="nim_list" id="nim_list" cols="30" rows="5"
-                            placeholder="Contoh:
-2023001
-2023002
-2023003"></textarea>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Tahun Akademik</label>
-                        <div class="d-flex flex-wrap align-items-center gap-3">
-                            @foreach ($tahun_akademik as $item)
-                                <div class="form-check form-check-success">
-                                    <input class="form-check-input" name="tahun_akademik[]" type="checkbox" value="{{ $item->kode_tahun_akademik }}" id="{{ $item->kode_tahun_akademik }}">
-                                    <label class="form-check-label" for="{{ $item->kode_tahun_akademik }}">
-                                        {{ $item->kode_tahun_akademik }}
-                                    </label>
-                                </div>
+                        <label class="form-label">Pilih Kegiatan</label>
+                        <select class="form-control" name="kegiatan_id" id="kegiatan_id">
+                            <option value="">Pilih Kegiatan</option>
+                            @foreach ($kegiatan as $item)
+                                <option value="{{ $item->id }}" {{ $kkn->kegiatan_mahasiswa_id == $item->id ? 'selected' : '' }}>
+                                    {{ $item->nama_kegiatan }}
+                                </option>
                             @endforeach
-
-                        </div>
+                        </select>
                     </div>
                 </div>
             </div>

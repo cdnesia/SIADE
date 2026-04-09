@@ -73,6 +73,8 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
 
     Route::prefix('laporan-kkn')->name('laporan-kkn.')->group(function () {
         Route::get('/', [LaporanKKN::class, 'index'])->name('index');
+        Route::get('/{id}/edit', [LaporanKKN::class, 'edit'])->name('edit');
+        Route::put('/{id}', [LaporanKKN::class, 'update'])->name('update');
     });
 });
 
