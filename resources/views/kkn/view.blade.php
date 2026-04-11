@@ -28,7 +28,7 @@
                             <td>{{ $item->nama_mahasiswa }}</td>
                             <td>{{ $item->nama_program_studi_idn }}</td>
                             <td>{{ $item->nama_kegiatan }}</td>
-                            <td></td>
+                            <td>{{ $item->status_bayar }}</td>
                             <td>
                                 <a href="{{ route('laporan-kkn.edit', Crypt::encrypt($item->id)) }}" class="btn btn-sm btn-info">Edit</a>
                             </td>
