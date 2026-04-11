@@ -12,6 +12,17 @@ class LaporanKKN extends Controller
 {
     public function index()
     {
+        $status = collect($this->cekTagihanKKN())
+            ->pluck('npm')
+            ->unique()
+            ->toArray();
+
+        $status = collect($status)
+            ->map(function ($item) {
+                return (int) $item;
+            })
+            ->toArray();
+
         $pendaftarKKN = DB::table('tbl_pendaftaran_kegiatan_mahasiswa as tpkm')
             ->join('master_mahasiswa as mm', 'tpkm.npm', '=', 'mm.npm')
             ->join('master_program_studi as mps', 'mm.kode_program_studi', '=', 'mps.kode_program_studi')
@@ -19,13 +30,12 @@ class LaporanKKN extends Controller
             ->select('tpkm.*', 'mm.nama_mahasiswa', 'mps.nama_program_studi_idn', 'tkm.nama_kegiatan')
             ->get();
 
-        $pendaftarKKN = $pendaftarKKN->map(function ($item) {
-            $status = $this->cekTagihanKKN($item->npm, 20252); // ganti dengan parameter yang sesuai
-            $item->status_bayar = empty($status) ? 'Belum Bayar' : 'Sudah Bayar';
+        $pendaftarKKN = $pendaftarKKN->map(function ($item) use ($status) {
+            // ganti dengan parameter yang sesuai
+            $item->status_bayar = in_array($item->npm, $status) ? 'Sudah Bayar' : 'Belum Bayar';
 
             return $item;
         });
-
 
         $d['kkn'] = $pendaftarKKN;
         return view('kkn.view', $d);
@@ -58,17 +68,14 @@ class LaporanKKN extends Controller
             ]);
         return redirect()->route('laporan-kkn.index')->with('success', 'Laporan KKN berhasil diperbarui');
     }
-    private function cekTagihanKKN($npm, $tahun_akademik)
+    private function cekTagihanKKN()
     {
         $url = config('services.simaku_url');
         $timestamp = time();
         $nonce = Str::uuid()->toString();
         $path = 'api/cek-tagihan-kkn';
 
-        $body = json_encode([
-            'npm' => $npm,
-            'tahun_akademik' => $tahun_akademik,
-        ]);
+        $body = json_encode([]);
 
         $data = $timestamp . $nonce . 'POST' . $path . $body;
         $signature = hash_hmac('sha256', $data, config('services.hmac_secret'));
