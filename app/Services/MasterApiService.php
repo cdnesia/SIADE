@@ -25,7 +25,7 @@ class MasterApiService
             ->where('kode_tahun_akademik', $periode)
             ->whereHas('mahasiswa', function ($q) use ($prodi, $angkatan) {
                 $q->where('kode_program_studi', $prodi)
-                  ->where('angkatan', 'like', "{$angkatan}%");
+                  ->where('tahun_angkatan', 'like', "{$angkatan}%");
             })
             ->get();
 
