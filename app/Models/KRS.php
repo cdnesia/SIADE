@@ -42,6 +42,11 @@ class KRS extends Model
         );
     }
 
+    public function mahasiswa()
+    {
+        return $this->hasOne(Mahasiswa::class, 'npm', 'npm');
+    }
+
     public function getMataKuliahAttribute()
     {
         if ($this->jadwal_id == 0) {

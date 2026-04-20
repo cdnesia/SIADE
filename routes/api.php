@@ -12,3 +12,4 @@ Route::get('/test', function () {
 
 Route::post('/data-dosen', [MasterApiController::class, 'dataDosen'])->middleware('verifyHmac');
 Route::post('/data-ruang', [MasterApiController::class, 'dataRuang'])->middleware('verifyHmac');
+Route::post('/mahasiswa/khs', [MasterApiController::class, 'khs'])->middleware('verifyHmac');

@@ -18,7 +18,7 @@ class BiodataMahasiswaController extends Controller
     {
         $data = [
             "act"    => "GetListMahasiswa",
-            "filter" => "id_periode='20251'",
+            "filter" => "id_periode like '2024%'",
             "limit"  => 0,
             "offset" => 0
         ];
