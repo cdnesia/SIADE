@@ -14,7 +14,7 @@ class MasterApiService
     {
         //
     }
-    public function krs($periode = null, $prodi = null)
+    public function krs($periode = null, $prodi = null, $angkatan = null)
     {
         $krsRaw = KRS::with([
             'jadwal',
@@ -23,8 +23,9 @@ class MasterApiService
             'mahasiswa'
         ])
             ->where('kode_tahun_akademik', $periode)
-            ->whereHas('mahasiswa', function ($q) use ($prodi) {
-                $q->where('kode_program_studi', $prodi);
+            ->whereHas('mahasiswa', function ($q) use ($prodi, $angkatan) {
+                $q->where('kode_program_studi', $prodi)
+                  ->where('angkatan', "{$angkatan}%");
             })
             ->get();
 

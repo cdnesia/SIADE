@@ -11,14 +11,15 @@ class MasterApiController extends Controller
     {
         $periode = request()->input('periode');
         $prodi = request()->input('prodi');
+        $angkatan = request()->input('angkatan');
 
-        if (!$periode || !$prodi) {
+        if (!$periode || !$prodi || !$angkatan) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Parameter periode atau prodi tidak ditemukan'
+                'message' => 'Parameter periode, prodi, atau angkatan tidak ditemukan'
             ], 400);
         }
-        $krs = $service->krs($periode, $prodi);
+        $krs = $service->krs($periode, $prodi, $angkatan);
 
         return response()->json([
             'status' => 'success',
