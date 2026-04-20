@@ -9,8 +9,8 @@ class MasterApiController extends Controller
 {
     public function khs(MasterApiService $service)
     {
-        $periode = request()->query('periode');
-        $prodi = request()->query('prodi');
+        $periode = request()->input('periode');
+        $prodi = request()->input('prodi');
 
         if (!$periode || !$prodi) {
             return response()->json([
