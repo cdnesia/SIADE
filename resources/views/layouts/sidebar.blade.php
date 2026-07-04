@@ -6,6 +6,13 @@
             'route' => 'dashboard',
         ],
         [
+            'title' => 'Mahasiswa Baru',
+            'icon' => 'bx bx-user',
+            'children' => [
+                ['title' => 'Data Pendaftar', 'route' => 'mahasiswa-baru.index', 'icon' => 'bx bx-radio-circle'],
+            ],
+        ],
+        [
             'title' => 'Data Mahasiswa',
             'icon' => 'bx bx-user',
             'children' => [

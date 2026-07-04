@@ -82,6 +82,26 @@ return [
             ]) : [],
         ],
 
+        'penmaru_old' => [
+            'driver' => 'mariadb',
+            'url' => env('DB_URL'),
+            'host' => env('DB_HOST_3', '127.0.0.1'),
+            'port' => env('DB_PORT_3', '3306'),
+            'database' => env('DB_DATABASE_3', 'laravel'),
+            'username' => env('DB_USERNAME_3', 'root'),
+            'password' => env('DB_PASSWORD_3', ''),
+            'unix_socket' => env('DB_SOCKET_3', ''),
+            'charset' => env('DB_CHARSET_3', 'utf8mb4'),
+            'collation' => env('DB_COLLATION_2', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),

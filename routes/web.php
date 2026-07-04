@@ -10,6 +10,7 @@ use App\Http\Controllers\kipk\CekKhsMahasiswa;
 use App\Http\Controllers\LaporanKKN;
 use App\Http\Controllers\LaporanPenerimaBeasiswaController;
 use App\Http\Controllers\LembagaBeasiswaController;
+use App\Http\Controllers\MahasiswaBaruController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\MahasiswaPTRPLController;
 use App\Http\Controllers\PenerimaBeasiswaController;
@@ -75,6 +76,10 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::get('/', [LaporanKKN::class, 'index'])->name('index');
         Route::get('/{id}/edit', [LaporanKKN::class, 'edit'])->name('edit');
         Route::put('/{id}', [LaporanKKN::class, 'update'])->name('update');
+    });
+
+    Route::prefix('mahasiswa-baru')->name('mahasiswa-baru.')->group(function () {
+        Route::get('/', [MahasiswaBaruController::class, 'index'])->name('index');
     });
 });
 
