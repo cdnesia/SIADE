@@ -140,13 +140,12 @@ class MahasiswaBaruController extends Controller
             })
             ->values();
 
-        return response()->json([
-            'npm_baru_diterbitkan' => $hasil,
-            'jumlah_data' => count($hasil),
-            'data_mahasiswa_baru' => [
-                'jumlah_data' => count($sudah_ada_nim),
-                'by_prodi' => $by_prodi,
-            ]
-        ]);
+        $d['npm_baru'] = $hasil;
+        $d['jumlah_npm_baru'] = count($hasil);
+        $d['jumlah_mahasiswa_baru'] = count($sudah_ada_nim);
+        $d['by_prodi'] = $by_prodi;
+        $d['tahun_filter'] = $tahun_filter;
+
+        return view('mahasiswa-baru.index', $d);
     }
 }

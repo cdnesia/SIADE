@@ -6,7 +6,7 @@
                 <div class="card-body">
                     <div class="d-flex flex-column align-items-center text-center">
                         <img src="{{ asset('') }}assets/images/no-image.png" alt="Admin"
-                            class="rounded-circle p-1 bg-primary" width="150">
+                            class="rounded" width="120">
                         <div class="mt-3">
                             <p class="text-secondary mb-1">{{ $mahasiswa['nama_mahasiswa'] }}</p>
                             <p class="text-muted font-size-sm mb-1">{{ $mahasiswa['npm'] }}</p>

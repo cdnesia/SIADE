@@ -6,18 +6,18 @@
             'route' => 'dashboard',
         ],
         [
-            'title' => 'Mahasiswa Baru',
+            'title' => 'PMB',
             'icon' => 'bx bx-user',
             'children' => [
-                ['title' => 'Data Pendaftar', 'route' => 'mahasiswa-baru.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Mahasiswa Baru', 'route' => 'mahasiswa-baru.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
         [
             'title' => 'Data Mahasiswa',
             'icon' => 'bx bx-user',
             'children' => [
-                ['title' => 'Jalur Penerimaan Mahasiswa Baru', 'route' => 'mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
-                ['title' => 'Jalur Pindahan/Transfer/RPL', 'route' => 'mahasiswa-ptrpl.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Peserta Didik Baru', 'route' => 'mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Pindahan/Transfer/RPL', 'route' => 'mahasiswa-ptrpl.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
         [
