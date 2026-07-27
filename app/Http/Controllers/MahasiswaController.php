@@ -7,7 +7,9 @@ use App\Models\KelasPerkuliahan;
 use App\Models\KRS;
 use App\Models\KurikulumMataKuliah;
 use App\Models\KurikulumProdi;
+use App\Models\LembagaBeasiswa;
 use App\Models\Mahasiswa;
+use App\Models\PenerimaBeasiswa;
 use App\Models\Prodi;
 use App\Models\SkalaNilai;
 use App\Services\DataService;
@@ -40,8 +42,37 @@ class MahasiswaController extends Controller
                 $query->where('m.kode_program_studi', $request->prodi);
             }
 
+            if ($request->tahun) {
+                $query->where('m.tahun_angkatan', $request->tahun);
+            }
+
+            if ($request->kelas) {
+                $query->where('m.program_kuliah_id', $request->kelas);
+            }
+
+            // KIPK lookup
+            $penerimaBeasiswa = PenerimaBeasiswa::all()->groupBy('npm')->map(function ($items) {
+                $tahun = $items->pluck('tahun_akademik')
+                    ->map(fn($t) => json_decode($t, true))
+                    ->flatten()
+                    ->unique()
+                    ->sort()
+                    ->toArray();
+                return $tahun;
+            });
+
             return DataTables::eloquent($query)
                 ->addIndexColumn()
+                ->addColumn('nama_mahasiswa', function ($row) use ($penerimaBeasiswa) {
+                    $nama = e($row->nama_mahasiswa);
+                    if (isset($penerimaBeasiswa[$row->npm])) {
+                        $tahunList = $penerimaBeasiswa[$row->npm];
+                        $tahunStr = implode(', ', $tahunList);
+                        $nama .= ' <span class="badge bg-success" style="font-size:10px;">KIPK</span>';
+                        $nama .= '<br><small class="text-muted">' . $tahunStr . '</small>';
+                    }
+                    return $nama;
+                })
                 ->addColumn('aksi', function ($row) {
                     $btn = '';
                     // if (auth('web')->user()->can($this->modul . '.edit')) {
@@ -55,29 +86,22 @@ class MahasiswaController extends Controller
                     //      </form>';
                     // }
                     $btn .= '<a href="' . route($this->modul . '.show', Crypt::encrypt($row->id)) . '" class="btn btn-sm btn-info me-1"><i class="bx bx-search-alt me-0"></i>Detail</a>';
-                    if (auth('web')->user()->can($this->modul . '.detail.krs')) {
-                        $btn .= '<form action="' . route($this->modul . '.detail.krs', Crypt::encrypt($row->npm)) . '" method="POST" style="display:inline-block;">
-                            ' . csrf_field() . '
-                            <button type="submit" class="btn btn-sm btn-info me-1"><i class="bx bx-search-alt mr-1"></i>KRS</button>
-                         </form>';
-                    }
-                    if (auth('web')->user()->can($this->modul . '.detail.khs')) {
-                        $btn .= '<form action="' . route($this->modul . '.detail.khs', Crypt::encrypt($row->npm)) . '" method="get" style="display:inline-block;">
-                            <button type="submit" class="btn btn-sm btn-info me-1"><i class="bx bx-search-alt mr-1"></i>KHS</button>
-                         </form>';
-                    }
                     return $btn ?: '-';
                 })
-                ->rawColumns(['aksi'])
+                ->rawColumns(['nama_mahasiswa', 'aksi'])
                 ->make(true);
         }
-        return view('mahasiswa.view');
+        $prodi = Prodi::orderBy('nama_program_studi_idn')->get();
+        $kelas = KelasPerkuliahan::orderBy('nama_program_perkuliahan')->get();
+        $tahun = Mahasiswa::select('tahun_angkatan')->distinct()->orderBy('tahun_angkatan', 'desc')->pluck('tahun_angkatan');
+
+        return view('mahasiswa.view', compact('prodi', 'kelas', 'tahun'));
     }
     public function create() {}
     public function store() {}
     public function show(Request $request, $id, DataService $dataService)
     {
-        $page = $request->input('p');
+        $page = $request->input('p', 'detail-mahasiswa');
 
         $id = Crypt::decrypt($id);
 
@@ -114,9 +138,47 @@ class MahasiswaController extends Controller
             ];
         })->first();
 
-        $d['krs'] = $dataService->krs(Crypt::encrypt($mahasiswa['npm']));
+        // KIPK / Beasiswa
+        $masterLembaga = LembagaBeasiswa::pluck('nama_lembaga', 'id');
+        $penerima = PenerimaBeasiswa::where('npm', $mahasiswa['npm'])->get();
+        $isKipk = $penerima->isNotEmpty();
+        $riwayatBeasiswa = $penerima->map(function ($item) use ($masterLembaga) {
+            $tahunArray = json_decode($item->tahun_akademik, true);
+            return [
+                'lembaga'       => $masterLembaga[$item->id_lembaga] ?? '-',
+                'tahun_akademik'=> is_array($tahunArray) ? $tahunArray : [],
+            ];
+        })->toArray();
+
+        $encryptedNpm = Crypt::encrypt($mahasiswa['npm']);
+        $d['krs'] = $dataService->krs($encryptedNpm);
         $d['mahasiswa'] = $mahasiswa;
         $d['page'] = $page;
+        $d['isKipk'] = $isKipk;
+        $d['riwayatBeasiswa'] = $riwayatBeasiswa;
+
+        if ($page == 'khs') {
+            $flatKrs = collect($d['krs'])
+                ->pluck('krs')
+                ->flatten(1);
+
+            $kodeMkArray = $flatKrs->map(function ($item) {
+                return $item['kode_mata_kuliah'];
+            });
+
+            $kurikulum_id = KurikulumProdi::whereJsonContains('tahun_angkatan', (int) $mahasiswa['tahun_angkatan'])
+                ->where('kode_program_studi', $mahasiswa['kode_program_studi'])
+                ->pluck('kurikulum_id')
+                ->first();
+
+            $d['matakuliah'] = KurikulumMataKuliah::where('kode_program_studi', $mahasiswa['kode_program_studi'])
+                ->where('kurikulum_id', $kurikulum_id)
+                ->whereNotIn('kode_mata_kuliah', $kodeMkArray)
+                ->orderBy('semester')
+                ->get();
+        }
+
+        $d['encryptedNpm'] = $encryptedNpm;
         return view('mahasiswa.show', $d);
     }
     public function edit() {}
@@ -290,58 +352,6 @@ class MahasiswaController extends Controller
             return redirect()
                 ->route($this->modul . '.index')
                 ->with('error', 'ID tidak valid');
-        }
-    }
-    public function sync()
-    {
-        $total = 0;
-        try {
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            $existingNpm = Mahasiswa::pluck('npm')->toArray();
-            DB::connection('siade_old')->table('mhsw')
-                ->orderBy('nim')
-                ->chunk(1000, function ($rows) use (&$total, $existingNpm) {
-                    $data = [];
-                    foreach ($rows as $m) {
-                        if (!in_array($m->nim, $existingNpm)) {
-                            $data[] = [
-                                'npm' => $m->nim,
-                                'va_code' => $m->va_code,
-                                'nama_mahasiswa' => strtoupper($m->nama_lengkap),
-                                'tahun_angkatan' => (int)$m->TahunID,
-                                'kode_program_studi' => $m->ProdiID,
-                                'program_kuliah_id' => match ((int)$m->KelasID) {
-                                    1, 2 => 1,
-                                    3 => 2,
-                                    4 => 3,
-                                    default => null
-                                },
-                                'jenis_pendaftaran_id' => match ((int)$m->JenisPendaftaranID) {
-                                    1 => 1,
-                                    3 => 2,
-                                    4 => 13,
-                                    default => null
-                                },
-                                'pa_id' => $m->PaID,
-                            ];
-                            $existingNpm[] = $m->nim;
-                        }
-                    }
-                    if (!empty($data)) {
-                        Mahasiswa::insert($data);
-                        $total += count($data);
-                    }
-                });
-
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            return redirect()
-                ->route('mahasiswa.index')
-                ->with('success', "Sinkronisasi berhasil. Total mahasiswa: $total.");
-        } catch (\Throwable $e) {
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            return redirect()
-                ->route('mahasiswa.index')
-                ->with('error', "Sinkronisasi gagal: {$e->getMessage()}");
         }
     }
 }

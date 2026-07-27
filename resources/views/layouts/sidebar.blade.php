@@ -46,7 +46,6 @@
                 ['title' => 'Tahun Akademik', 'route' => 'tahun-akademik.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Kalender Akademik', 'route' => 'kalender-akademik.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Kegiatan Mahasiswa', 'route' => 'kegiatan-mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
-                ['title' => 'Sync Data', 'route' => 'master.sync.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
 
