@@ -71,7 +71,10 @@ class JadwalDosenController extends Controller
 
                     if (!empty($row->dosen_team)) {
                         $namaTeam = collect(explode(',', $row->dosen_team))
-                            ->map(fn($id) => $masterDosen[trim($id)]['nama_lengkap'] ?? null)
+                            ->map(fn($id) => trim($id))
+                            ->filter(fn($id) => $id !== '' && $id != $row->dosen_id)
+                            ->unique()
+                            ->map(fn($id) => $masterDosen[$id]['nama_lengkap'] ?? null)
                             ->filter()
                             ->implode(', ');
 
