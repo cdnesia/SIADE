@@ -128,6 +128,7 @@ class MahasiswaBaruController extends Controller
         }
 
         $by_prodi = $sudah_ada_nim
+            ->whereNotIn('pmb', $exclude)
             ->groupBy('prodi')
             ->map(function ($items, $prodi) use ($prodis) {
                 $nama_prodi = isset($prodis[$prodi]) ? $prodis[$prodi]->nama : 'Prodi ' . $prodi;
