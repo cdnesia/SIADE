@@ -6,10 +6,10 @@
             'route' => 'dashboard',
         ],
         [
-            'title' => 'PMB',
+            'title' => 'Mahasiswa Baru',
             'icon' => 'bx bx-user',
             'children' => [
-                ['title' => 'Mahasiswa Baru', 'route' => 'mahasiswa-baru.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Generate NPM', 'route' => 'mahasiswa-baru.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
         [
@@ -18,6 +18,13 @@
             'children' => [
                 ['title' => 'Peserta Didik Baru', 'route' => 'mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Pindahan/Transfer/RPL', 'route' => 'mahasiswa-ptrpl.index', 'icon' => 'bx bx-radio-circle'],
+            ],
+        ],
+        [
+            'title' => 'Perkuliahan',
+            'icon' => 'bx bx-calendar',
+            'children' => [
+                ['title' => 'Jadwal Dosen Mengajar', 'route' => 'jadwal-dosen.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
         [
@@ -46,13 +53,6 @@
                 ['title' => 'Tahun Akademik', 'route' => 'tahun-akademik.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Kalender Akademik', 'route' => 'kalender-akademik.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Kegiatan Mahasiswa', 'route' => 'kegiatan-mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
-            ],
-        ],
-        [
-            'title' => 'Perkuliahan',
-            'icon' => 'bx bx-calendar',
-            'children' => [
-                ['title' => 'Jadwal Dosen Mengajar', 'route' => 'jadwal-dosen.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
 
