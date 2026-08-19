@@ -7,7 +7,7 @@
         ],
         [
             'title' => 'Mahasiswa Baru',
-            'icon' => 'bx bx-user',
+            'icon' => 'bx bx-user-plus',
             'children' => [
                 ['title' => 'Generate NPM', 'route' => 'mahasiswa-baru.index', 'icon' => 'bx bx-radio-circle'],
             ],
