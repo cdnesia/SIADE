@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Feeder\BiodataMahasiswaController;
 use App\Http\Controllers\Feeder\CekMahasiswaController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\JadwalDosenController;
 use App\Http\Controllers\KalenderAkademikController;
 use App\Http\Controllers\KegiatanMahasiswaController;
 use App\Http\Controllers\kipk\CekKhsMahasiswa;
@@ -42,6 +43,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::resource('tahun-akademik', TahunAkademikController::class)->except('show');
     Route::resource('kalender-akademik', KalenderAkademikController::class)->except('show');
     Route::resource('kegiatan-mahasiswa', KegiatanMahasiswaController::class)->except('show');
+    Route::resource('jadwal-dosen', JadwalDosenController::class)->only('index');
 
     Route::resource('lembaga-beasiswa', LembagaBeasiswaController::class)->except('show');
     Route::resource('penerima-beasiswa', PenerimaBeasiswaController::class)->except('show');

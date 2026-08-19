@@ -48,6 +48,13 @@
                 ['title' => 'Kegiatan Mahasiswa', 'route' => 'kegiatan-mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
+        [
+            'title' => 'Perkuliahan',
+            'icon' => 'bx bx-calendar',
+            'children' => [
+                ['title' => 'Jadwal Dosen Mengajar', 'route' => 'jadwal-dosen.index', 'icon' => 'bx bx-radio-circle'],
+            ],
+        ],
 
         [
             'title' => 'Laporan',
