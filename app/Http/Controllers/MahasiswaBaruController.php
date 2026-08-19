@@ -136,7 +136,7 @@ class MahasiswaBaruController extends Controller
                     'nama_prodi' => $nama_prodi,
                     'kode_prodi' => $prodi,
                     'jumlah'     => $items->count(),
-                    'data'       => $items->values(),
+                    'data'       => $items->sortBy('nim')->values(),
                 ];
             })
             ->values();
