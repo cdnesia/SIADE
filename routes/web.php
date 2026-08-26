@@ -5,6 +5,7 @@ use App\Http\Controllers\Feeder\BiodataMahasiswaController;
 use App\Http\Controllers\Feeder\CekMahasiswaController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\JadwalDosenController;
+use App\Http\Controllers\Kaprodi\KurikulumController;
 use App\Http\Controllers\KalenderAkademikController;
 use App\Http\Controllers\KegiatanMahasiswaController;
 use App\Http\Controllers\kipk\CekKhsMahasiswa;
@@ -82,6 +83,10 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
 
     Route::prefix('mahasiswa-baru')->name('mahasiswa-baru.')->group(function () {
         Route::get('/', [MahasiswaBaruController::class, 'index'])->name('index');
+    });
+
+    Route::prefix('kaprodi')->name('kaprodi.')->group(function () {
+        Route::resource('kurikulum', KurikulumController::class)->except('show');
     });
 });
 

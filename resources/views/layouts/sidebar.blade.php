@@ -55,6 +55,13 @@
                 ['title' => 'Kegiatan Mahasiswa', 'route' => 'kegiatan-mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
+        [
+            'title' => 'Kaprodi',
+            'icon' => 'bx bx-book-content',
+            'children' => [
+                ['title' => 'Kurikulum', 'route' => 'kaprodi.kurikulum.index', 'icon' => 'bx bx-radio-circle'],
+            ],
+        ],
 
         [
             'title' => 'Laporan',

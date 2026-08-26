@@ -12,7 +12,7 @@ class ApiService
     public function __construct(SignatureService $signature)
     {
         $this->signature = $signature;
-        $this->baseUrl = config('services.api.base_url');
+        $this->baseUrl = rtrim(config('services.api.base_url'), '/');
     }
 
     public function post(string $endpoint, array $body = [])
@@ -23,15 +23,15 @@ class ApiService
             $body
         );
 
+        $bodyJson = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
         return Http::withHeaders([
             'Authorization' => $auth['authorization'],
-            'Content-Type'  => 'application/json',
             'X-TIMESTAMP'   => $auth['timestamp'],
             'X-SIGNATURE'   => $auth['signature'],
-        ])->post(
-            $this->baseUrl . $endpoint,
-            $body
-        )->json();
+        ])->withBody($bodyJson, 'application/json')
+            ->post($this->baseUrl . $endpoint)
+            ->json();
     }
 
     public function get(string $endpoint)
@@ -58,15 +58,15 @@ class ApiService
             $body
         );
 
+        $bodyJson = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
         return Http::withHeaders([
             'Authorization' => $auth['authorization'],
-            'Content-Type'  => 'application/json',
             'X-TIMESTAMP'   => $auth['timestamp'],
             'X-SIGNATURE'   => $auth['signature'],
-        ])->put(
-            $this->baseUrl . $endpoint,
-            $body
-        )->json();
+        ])->withBody($bodyJson, 'application/json')
+            ->put($this->baseUrl . $endpoint)
+            ->json();
     }
 
     public function delete(string $endpoint)

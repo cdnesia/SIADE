@@ -15,7 +15,7 @@ class SignatureService
     {
         $config = config('services.api');
 
-        $this->baseUrl      = $config['base_url'];
+        $this->baseUrl      = rtrim($config['base_url'], '/');
         $this->clientId     = $config['client_id'];
         $this->clientSecret = $config['client_secret'];
         $this->privateKey   = $config['private_key'];
@@ -26,7 +26,7 @@ class SignatureService
      */
     public function accessToken(): array
     {
-        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
+        $timestamp = $this->isoTimestamp();
 
         $stringToSign = $this->clientId . '|' . $timestamp;
 
@@ -43,19 +43,17 @@ class SignatureService
             OPENSSL_ALGO_SHA256
         );
 
-        openssl_free_key($key);
-
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
-            'X-CLIENT-ID'  => $this->clientId,
             'X-TIMESTAMP'  => $timestamp,
+            'X-CLIENT-KEY' => $this->clientId,
             'X-SIGNATURE'  => base64_encode($signature),
         ])->post(
-            $this->baseUrl . '/api/v1/auth/access-token',
-            []
+            $this->baseUrl . '/api/oauth/token',
+            ['grantType' => 'client_credentials']
         );
 
-        if (!$response->successful()) {
+        if (!$response->successful() || !($response->json('success'))) {
             throw new \Exception($response->body());
         }
 
@@ -73,31 +71,26 @@ class SignatureService
 
         $token = $this->accessToken();
 
-        $accessToken = str_replace(
-            'Bearer ',
-            '',
-            $token['responseData']['accessToken']
-        );
+        $accessToken = $token['data']['access_token'];
 
-        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
+        $timestamp = $this->isoTimestamp();
 
-        $json = empty($body)
-            ? ''
-            : json_encode($body, JSON_UNESCAPED_SLASHES);
+        $json = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $hashBody = strtolower(hash('sha256', $json));
 
         $stringToSign =
             strtoupper($method)
-            . '|' . $endpoint
-            . '|' . $accessToken
-            . '|' . $hashBody
-            . '|' . $timestamp;
+            . ':' . $endpoint
+            . ':' . $accessToken
+            . ':' . $hashBody
+            . ':' . $timestamp;
 
-        $signature = strtolower(hash_hmac(
+        $signature = base64_encode(hash_hmac(
             'sha512',
             $stringToSign,
-            $this->clientSecret
+            $this->clientSecret,
+            true
         ));
 
         return [
@@ -106,5 +99,10 @@ class SignatureService
             'timestamp'     => $timestamp,
             'signature'     => $signature,
         ];
+    }
+
+    private function isoTimestamp(): string
+    {
+        return (new \DateTime('now', new \DateTimeZone('+07:00')))->format('Y-m-d\TH:i:s.v P');
     }
 }

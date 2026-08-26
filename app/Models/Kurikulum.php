@@ -7,4 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class Kurikulum extends Model
 {
     protected $table = 'master_kurikulum';
+
+    protected $fillable = [
+        'kode_kurikulum',
+        'nama_kurikulum',
+        'status',
+        'keterangan',
+    ];
 }

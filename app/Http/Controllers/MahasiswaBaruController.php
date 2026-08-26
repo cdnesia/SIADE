@@ -36,24 +36,22 @@ class MahasiswaBaruController extends Controller
         $belum_ada_nim_array = $belum_ada_nim->pluck('pmb')->unique()->values()->toArray();
 
         $result = $this->api->post(
-            '/api/v1/tagihan/cek-tagihan-masal',
+            '/api/tagihan',
             [
-                "npms"              => $belum_ada_nim_array,
+                "npm"              => $belum_ada_nim_array,
                 "tahun_akademik"    => $gelombang_pendaftaran
             ]
         );
 
         $dataLolos = [];
 
-        foreach ($result['responseData']['data'] as $npm => $tagihans) {
-            foreach ($tagihans as $tagihan) {
-                $total = (float) $tagihan['total_tagihan'];
-                $terbayar = (float) $tagihan['nominal_terbayar'];
-                if ($terbayar >= ($total * 0.5)) {
-                    foreach (json_decode($tagihan['detail_tagihan'], true) as $detail) {
-                        if ($detail['id_bipot'] == 1) {
-                            $dataLolos[] = $tagihan['npm'];
-                        }
+        foreach ($result['data'] as $tagihan) {
+            $total = (float) $tagihan['total_tagihan'];
+            $terbayar = (float) $tagihan['nominal_terbayar'];
+            if ($terbayar >= ($total * 0.5)) {
+                foreach ($tagihan['detail_tagihan'] as $detail) {
+                    if ($detail['id_bipot'] == 1) {
+                        $dataLolos[] = $tagihan['npm'];
                     }
                 }
             }
@@ -61,7 +59,7 @@ class MahasiswaBaruController extends Controller
 
         $prodis = DB::connection('penmaru_old')
             ->table('master_sub_unit_kerja as msuk')
-            ->select('kode', 'nim_prodi_kode', 'jenjang','msuk.nama')
+            ->select('kode', 'nim_prodi_kode', 'jenjang', 'msuk.nama')
             // ->select('msuk.*')
             ->join('master_pendidikan as mp', 'mp.id', 'msuk.id_pendidikan')
             ->where('kode', '!=', '')
