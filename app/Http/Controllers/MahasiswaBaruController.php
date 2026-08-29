@@ -38,20 +38,22 @@ class MahasiswaBaruController extends Controller
         $result = $this->api->post(
             '/api/tagihan',
             [
-                "npm"              => $belum_ada_nim_array,
-                "tahun_akademik"    => $gelombang_pendaftaran
+                "npms"             => $belum_ada_nim_array,
+                "tahun_akademik"   => $gelombang_pendaftaran,
             ]
         );
 
         $dataLolos = [];
 
-        foreach ($result['data'] as $tagihan) {
-            $total = (float) $tagihan['total_tagihan'];
-            $terbayar = (float) $tagihan['nominal_terbayar'];
-            if ($terbayar >= ($total * 0.5)) {
-                foreach ($tagihan['detail_tagihan'] as $detail) {
-                    if ($detail['id_bipot'] == 1) {
-                        $dataLolos[] = $tagihan['npm'];
+        if ($result['success'] ?? false) {
+            foreach (($result['data'] ?? []) as $tagihan) {
+                $total = (float) ($tagihan['total_tagihan'] ?? 0);
+                $terbayar = (float) ($tagihan['nominal_terbayar'] ?? 0);
+                if ($terbayar >= ($total * 0.5)) {
+                    foreach (($tagihan['detail_tagihan'] ?? []) as $detail) {
+                        if (($detail['id_bipot'] ?? null) == 1) {
+                            $dataLolos[] = $tagihan['npm'] ?? null;
+                        }
                     }
                 }
             }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\KegiatanMahasiswa;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
+use App\Services\ApiService;
 use App\Services\DataService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
@@ -50,12 +51,12 @@ class KegiatanMahasiswaController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create(DataService $dataService)
+    public function create(ApiService $api)
     {
         $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
         $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
         $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
-        $d['bipot'] = $dataService->bipot();
+        $d['bipot'] = $api->post('/api/bipot')['data'] ?? [];
         $d['data'] = null;
         return view('kegiatan-mahasiswa.form', $d);
     }
@@ -100,14 +101,14 @@ class KegiatanMahasiswaController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id, DataService $dataService)
+    public function edit(string $id, ApiService $api)
     {
         try {
             $id = Crypt::decrypt($id);
             $d['data'] = KegiatanMahasiswa::findOrFail($id);
             $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
             $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
-            $d['bipot'] = $dataService->bipot();
+            $d['bipot'] = $api->post('/api/bipot')['data'] ?? [];
             $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
             return view('kegiatan-mahasiswa.form', $d);
         } catch (DecryptException $e) {
