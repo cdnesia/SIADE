@@ -36,7 +36,7 @@ class MahasiswaBaruController extends Controller
         $belum_ada_nim_array = $belum_ada_nim->pluck('pmb')->unique()->values()->toArray();
 
         $result = $this->api->post(
-            '/api/tagihan',
+            '/api/tagihan-pmb/massal',
             [
                 "npms"             => $belum_ada_nim_array,
                 "tahun_akademik"   => $gelombang_pendaftaran,
