@@ -171,11 +171,11 @@ class CekKhsMahasiswa extends Controller
         $d['mahasiswa'] = $dataMahasiswa;
         return view('kipk.khs', $d);
     }
-    public function khsCetak($npm)
+    public function khsCetak($npm, $periode)
     {
         $response = $this->api->postFile('/api/khs/cetak', [
             'npm' => $npm,
-            'periode' => '20231'
+            'periode' => $periode
         ]);
 
         return response($response->body(), $response->status())

@@ -14,7 +14,7 @@
                 <h6 class="mb-0">Tahun Akademik {{ $key }} - Semester {{ $value['semester'] }}</h6>
                 <div class="ms-auto">
                     @can('kipk.khs-cetak')
-                        <a target="_blank" href="{{ route('kipk.khs-cetak', $mahasiswa['npm']) }}" class="btn btn-sm btn-primary">Cetak</a>
+                        <a target="_blank" href="{{ route('kipk.khs-cetak', [$mahasiswa['npm'], $key]) }}" class="btn btn-sm btn-primary">Cetak</a>
                     @endcan
                 </div>
             </div>
