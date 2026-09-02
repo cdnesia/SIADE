@@ -34,6 +34,24 @@ class ApiService
             ->json();
     }
 
+    public function postFile(string $endpoint, array $body = [])
+    {
+        $auth = $this->signature->symmetricSignature(
+            'POST',
+            $endpoint,
+            $body
+        );
+
+        $bodyJson = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return Http::withHeaders([
+            'Authorization' => $auth['authorization'],
+            'X-TIMESTAMP'   => $auth['timestamp'],
+            'X-SIGNATURE'   => $auth['signature'],
+        ])->withBody($bodyJson, 'application/json')
+            ->post($this->baseUrl . $endpoint);
+    }
+
     public function get(string $endpoint)
     {
         $auth = $this->signature->symmetricSignature(

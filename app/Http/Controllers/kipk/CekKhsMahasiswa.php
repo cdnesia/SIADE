@@ -9,13 +9,14 @@ use App\Models\Mahasiswa;
 use App\Models\PenerimaBeasiswa;
 use App\Models\Prodi;
 use App\Models\TahunAkademik;
+use App\Services\ApiService;
 use App\Services\DataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
 
 class CekKhsMahasiswa extends Controller
 {
+     public function __construct(protected ApiService $api) {}
     public function index(Request $request)
     {
         $d['tahun_akademik'] = TahunAkademik::all();
@@ -169,5 +170,15 @@ class CekKhsMahasiswa extends Controller
         $d['krs'] = $krs;
         $d['mahasiswa'] = $dataMahasiswa;
         return view('kipk.khs', $d);
+    }
+    public function khsCetak($npm)
+    {
+        $response = $this->api->postFile('/api/khs/cetak', [
+            'npm' => $npm,
+            'periode' => '20231'
+        ]);
+
+        return response($response->body(), $response->status())
+            ->header('Content-Type', $response->header('Content-Type') ?: 'application/pdf');
     }
 }

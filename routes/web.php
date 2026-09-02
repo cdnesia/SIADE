@@ -73,6 +73,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::get('/', [CekKhsMahasiswa::class, 'index'])->name('index');
         Route::post('/', [CekKhsMahasiswa::class, 'store'])->name('store');
         Route::get('/{npm}', [CekKhsMahasiswa::class, 'show'])->name('show');
+        Route::get('/{npm}/cetak', [CekKhsMahasiswa::class, 'khsCetak'])->name('khs-cetak');
     });
 
     Route::prefix('laporan-kkn')->name('laporan-kkn.')->group(function () {

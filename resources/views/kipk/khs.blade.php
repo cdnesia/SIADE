@@ -12,6 +12,7 @@
         <div class="card">
             <div class="card-header d-flex align-items-center">
                 <h6 class="mb-0">Tahun Akademik {{ $key }} - Semester {{ $value['semester'] }}</h6>
+                <a href="{{ route('kipk.khs-cetak', $mahasiswa['npm']) }}">Cetak</a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
