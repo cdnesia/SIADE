@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Akm;
 use App\Models\Fakultas;
 use App\Models\KelasPerkuliahan;
 use App\Models\KRS;
@@ -152,6 +153,7 @@ class MahasiswaController extends Controller
 
         $encryptedNpm = Crypt::encrypt($mahasiswa['npm']);
         $d['krs'] = $dataService->krs($encryptedNpm);
+        $d['akm'] = Akm::where('npm', $mahasiswa['npm'])->get()->keyBy('kode_tahun_akademik');
         $d['mahasiswa'] = $mahasiswa;
         $d['page'] = $page;
         $d['isKipk'] = $isKipk;
@@ -204,6 +206,52 @@ class MahasiswaController extends Controller
             ]);
         }
         return back()->with('success', 'Mata kuliah berhasil dikontrak');
+    }
+    public function akmUpdateStatus(Request $request, $npm)
+    {
+        try {
+            $npm = Crypt::decrypt($npm);
+        } catch (DecryptException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter tidak valid',
+            ], 400);
+        }
+
+        $request->validate([
+            'kode_tahun_akademik' => 'required',
+            'status_mahasiswa' => 'required|in:A,C,DO,N',
+        ]);
+
+        $mahasiswa = Mahasiswa::where('npm', $npm)->first();
+
+        if (!$mahasiswa) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mahasiswa tidak ditemukan',
+            ], 404);
+        }
+
+        $akm = Akm::updateOrCreate(
+            [
+                'npm' => $npm,
+                'kode_tahun_akademik' => $request->kode_tahun_akademik,
+            ],
+            [
+                'nama_mahasiswa' => $mahasiswa->nama_mahasiswa,
+                'kode_program_studi' => $mahasiswa->kode_program_studi,
+                'program_kuliah_id' => $mahasiswa->program_kuliah_id,
+                'status_mahasiswa' => $request->status_mahasiswa,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status mahasiswa berhasil diperbarui',
+            'data' => [
+                'status_mahasiswa' => $akm->status_mahasiswa,
+            ],
+        ]);
     }
     public function krsDestroy($id)
     {

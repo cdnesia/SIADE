@@ -32,7 +32,6 @@ class MahasiswaBaruController extends Controller
 
         $belum_ada_nim = $tahun_akademik[$tahun_filter]->filter(fn($item) => (is_null($item->nim) || $item->nim === '') && $item->pmb_jalur != 20);
 
-
         $belum_ada_nim_array = $belum_ada_nim->pluck('pmb')->unique()->values()->toArray();
 
         $result = $this->api->post(
@@ -43,16 +42,23 @@ class MahasiswaBaruController extends Controller
             ]
         );
 
+
         $dataLolos = [];
 
         if ($result['success'] ?? false) {
-            foreach (($result['data'] ?? []) as $tagihan) {
-                $total = (float) ($tagihan['total_tagihan'] ?? 0);
-                $terbayar = (float) ($tagihan['nominal_terbayar'] ?? 0);
-                if ($terbayar >= ($total * 0.5)) {
+            foreach (($result['data']['data'] ?? []) as $npm => $tagihanList) {
+                foreach (($tagihanList ?? []) as $tagihan) {
+                    $total = (float) ($tagihan['total_tagihan'] ?? 0);
+                    $terbayar = (float) ($tagihan['nominal_terbayar'] ?? 0);
+
+                    if ($terbayar <= ($total * 0.5)) {
+                        continue;
+                    }
+
                     foreach (($tagihan['detail_tagihan'] ?? []) as $detail) {
                         if (($detail['id_bipot'] ?? null) == 1) {
-                            $dataLolos[] = $tagihan['npm'] ?? null;
+                            $dataLolos[] = $npm;
+                            break 2;
                         }
                     }
                 }
@@ -62,12 +68,9 @@ class MahasiswaBaruController extends Controller
         $prodis = DB::connection('penmaru_old')
             ->table('master_sub_unit_kerja as msuk')
             ->select('kode', 'nim_prodi_kode', 'jenjang', 'msuk.nama')
-            // ->select('msuk.*')
-            ->join('master_pendidikan as mp', 'mp.id', 'msuk.id_pendidikan')
+                ->join('master_pendidikan as mp', 'mp.id', 'msuk.id_pendidikan')
             ->where('kode', '!=', '')
             ->get()->keyBy('kode')->toArray();
-
-        // dd($prodis);
 
         $data_mahasiswa = $belum_ada_nim->keyBy('pmb');
 
@@ -104,7 +107,6 @@ class MahasiswaBaruController extends Controller
                 ->where('nim_num', '!=', 0)
                 ->orderBy('nim_num', 'DESC')
                 ->value('nim_num');
-
 
             $nim_num_baru = ($nim_terakhir ? (int) $nim_terakhir + 1 : 1);
 

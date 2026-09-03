@@ -167,11 +167,57 @@
                     <h5 class="mb-0"><i class="bx bx-book-open me-2"></i>Kartu Rencana Studi (KRS)</h5>
                 </div>
                 @foreach ($krs as $key => $value)
+                    @php
+                        $statusAkm = $akm[$key]->status_mahasiswa ?? null;
+                        $statusLabel = match ($statusAkm) {
+                            'A' => 'Aktif',
+                            'C' => 'Cuti',
+                            'DO' => 'Drop Out',
+                            'N' => 'Non Aktif',
+                            default => 'Belum Ada Data',
+                        };
+                        $statusBadge = match ($statusAkm) {
+                            'A' => 'bg-success',
+                            'C' => 'bg-warning text-dark',
+                            'DO' => 'bg-danger',
+                            'N' => 'bg-dark',
+                            default => 'bg-secondary',
+                        };
+                    @endphp
                     <div class="card">
-                        <div class="card-header d-flex align-items-center">
+                        <div class="card-header d-flex align-items-center flex-wrap gap-2">
                             <h6 class="mb-0">Tahun Akademik {{ $key }}</h6>
                             <h6 class="mb-0"> -Semester {{ $value['semester'] }}</h6>
-                            <div class="ms-auto">
+                            <span class="badge akm-status-badge {{ $statusBadge }}" data-periode="{{ $key }}">{{ $statusLabel }}</span>
+                            <div class="ms-auto d-flex align-items-center gap-2">
+                                @can($modul . '.detail.akm.update')
+                                    <form action="{{ route('mahasiswa.detail.akm.update', $encryptedNpm) }}"
+                                        method="post" class="d-flex align-items-center gap-1 form-update-akm"
+                                        data-periode="{{ $key }}">
+                                        @csrf
+                                        <input type="hidden" name="kode_tahun_akademik" value="{{ $key }}">
+                                        <select name="status_mahasiswa" class="form-select form-select-sm"
+                                            style="width: auto">
+                                            @unless ($statusAkm)
+                                                <option value="" selected disabled>- Pilih Status -</option>
+                                            @endunless
+                                            <option value="A" {{ $statusAkm == 'A' ? 'selected' : '' }}>Aktif
+                                            </option>
+                                            <option value="C" {{ $statusAkm == 'C' ? 'selected' : '' }}>Cuti
+                                            </option>
+                                            <option value="DO" {{ $statusAkm == 'DO' ? 'selected' : '' }}>Drop Out
+                                            </option>
+                                            <option value="N" {{ $statusAkm == 'N' ? 'selected' : '' }}>Non Aktif
+                                            </option>
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary"
+                                            title="Simpan Status">
+                                            <span class="btn-label"><i class="bx bx-save me-0"></i></span>
+                                            <span class="spinner-border spinner-border-sm d-none" role="status"
+                                                aria-hidden="true"></span>
+                                        </button>
+                                    </form>
+                                @endcan
                                 <button onclick="window.print()" class="btn btn-sm btn-primary me-0"><i
                                         class="bx bx-printer mr-1"></i> Cetak</button>
                             </div>
@@ -420,6 +466,100 @@
         $('.kontrakMK').click(function() {
             let tahunAkademik = $(this).data('tahun-akademik');
             $('#fkode_tahun_akademik').val(tahunAkademik);
+        });
+
+        // AKM Update Status (per semester)
+        const akmStatusMeta = {
+            A: {
+                label: 'Aktif',
+                badge: 'bg-success'
+            },
+            C: {
+                label: 'Cuti',
+                badge: 'bg-warning text-dark'
+            },
+            DO: {
+                label: 'Drop Out',
+                badge: 'bg-danger'
+            },
+            N: {
+                label: 'Non Aktif',
+                badge: 'bg-dark'
+            },
+        };
+
+        $(document).on('submit', '.form-update-akm', function(e) {
+            e.preventDefault();
+            let form = $(this);
+            let btn = form.find('button[type="submit"]');
+
+            if (btn.prop('disabled')) return;
+
+            let periode = form.data('periode');
+            let badge = $('.akm-status-badge[data-periode="' + periode + '"]');
+
+            btn.prop('disabled', true);
+            btn.find('.btn-label').addClass('d-none');
+            btn.find('.spinner-border').removeClass('d-none');
+
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: form.serialize(),
+                success: function(response) {
+                    if (response.success) {
+                        let meta = akmStatusMeta[response.data.status_mahasiswa];
+                        if (meta) {
+                            badge.attr('class', 'badge akm-status-badge ' + meta.badge)
+                                .attr('data-periode', periode)
+                                .text(meta.label);
+                        }
+                        Lobibox.notify('success', {
+                            pauseDelayOnHover: true,
+                            size: 'mini',
+                            rounded: true,
+                            icon: 'bx bx-check-circle',
+                            delayIndicator: false,
+                            continueDelayOnInactiveTab: false,
+                            position: 'top right',
+                            msg: response.message,
+                            sound: false,
+                        });
+                    } else {
+                        Lobibox.notify('error', {
+                            pauseDelayOnHover: true,
+                            size: 'mini',
+                            rounded: true,
+                            icon: 'bx bx-x-circle',
+                            delayIndicator: false,
+                            continueDelayOnInactiveTab: false,
+                            position: 'top right',
+                            msg: response.message,
+                            sound: false,
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    let msg = (xhr.responseJSON && xhr.responseJSON.message) ||
+                        'Gagal memperbarui status mahasiswa';
+                    Lobibox.notify('error', {
+                        pauseDelayOnHover: true,
+                        size: 'mini',
+                        rounded: true,
+                        icon: 'bx bx-x-circle',
+                        delayIndicator: false,
+                        continueDelayOnInactiveTab: false,
+                        position: 'top right',
+                        msg: msg,
+                        sound: false,
+                    });
+                },
+                complete: function() {
+                    btn.prop('disabled', false);
+                    btn.find('.btn-label').removeClass('d-none');
+                    btn.find('.spinner-border').addClass('d-none');
+                }
+            });
         });
     </script>
 @endpush

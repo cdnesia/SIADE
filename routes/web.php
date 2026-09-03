@@ -37,9 +37,13 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::post('mahasiswa/detail/krs/{id}/edit', [MahasiswaController::class, 'krsEdit'])->name('mahasiswa.detail.krs.edit');
     Route::delete('mahasiswa/detail/krs/{id}/destroy', [MahasiswaController::class, 'krsDestroy'])->name('mahasiswa.detail.krs.destroy');
     Route::post('mahasiswa/khs/{id}/update-nilai', [MahasiswaController::class, 'khsUpdateNilai'])->name('mahasiswa.khs.update-nilai');
+    Route::post('mahasiswa/detail/akm/{npm}/update', [MahasiswaController::class, 'akmUpdateStatus'])->name('mahasiswa.detail.akm.update');
     Route::get('mahasiswa/detail/khs/{id}', [MahasiswaController::class, 'khs'])->name('mahasiswa.detail.khs');
     Route::resource('mahasiswa', MahasiswaController::class);
-    Route::resource('mahasiswa-ptrpl', MahasiswaPTRPLController::class);
+    Route::resource('mahasiswa-ptrpl', MahasiswaPTRPLController::class)->only('index');
+    Route::get('mahasiswa-ptrpl/import', [MahasiswaPTRPLController::class, 'importForm'])->name('mahasiswa-ptrpl.import');
+    Route::post('mahasiswa-ptrpl/import', [MahasiswaPTRPLController::class, 'importStore'])->name('mahasiswa-ptrpl.import.store');
+    Route::get('mahasiswa-ptrpl/import/template', [MahasiswaPTRPLController::class, 'downloadTemplate'])->name('mahasiswa-ptrpl.import.template');
 
     Route::resource('tahun-akademik', TahunAkademikController::class)->except('show');
     Route::resource('kalender-akademik', KalenderAkademikController::class)->except('show');
