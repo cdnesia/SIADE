@@ -289,6 +289,12 @@
                         <div class="card-header d-flex align-items-center">
                             <h6 class="mb-0">Tahun Akademik {{ $key }}-Semester {{ $value['semester'] }}</h6>
                             <div class="ms-auto">
+                                @can($modul . '.khs.cetak')
+                                    <a href="{{ route('mahasiswa.khs.cetak', [$encryptedNpm, $key]) }}"
+                                        target="_blank" class="btn btn-sm btn-success">
+                                        <i class="bx bx-printer mr-1"></i> Cetak KHS
+                                    </a>
+                                @endcan
                                 @can($modul . '.krs.create')
                                     <a href="#" class="btn btn-sm btn-info kontrakMK" data-tahun-akademik="{{ $key }}"
                                         data-npm="{{ Crypt::decrypt($encryptedNpm) }}" data-bs-toggle="modal"

@@ -2,104 +2,142 @@
 
 namespace App\Services;
 
+use Closure;
+use Exception;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ApiService
 {
-    protected SignatureService $signature;
-    protected string $baseUrl;
+    private const TOKEN_CACHE_KEY = 'api_service.access_token';
+    private const REFRESH_TOKEN_CACHE_KEY = 'api_service.refresh_token';
 
-    public function __construct(SignatureService $signature)
+    private string $baseUrl;
+    private ?string $clientId;
+    private ?string $clientSecret;
+
+    public function __construct()
     {
-        $this->signature = $signature;
         $this->baseUrl = rtrim(config('services.api.base_url'), '/');
+        $this->clientId = config('services.api.client_id');
+        $this->clientSecret = config('services.api.client_secret');
     }
 
-    public function post(string $endpoint, array $body = [])
+    private function client(): PendingRequest
     {
-        $auth = $this->signature->symmetricSignature(
-            'POST',
-            $endpoint,
-            $body
-        );
-
-        $bodyJson = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        return Http::withHeaders([
-            'Authorization' => $auth['authorization'],
-            'X-TIMESTAMP'   => $auth['timestamp'],
-            'X-SIGNATURE'   => $auth['signature'],
-        ])->withBody($bodyJson, 'application/json')
-            ->post($this->baseUrl . $endpoint)
-            ->json();
+        return Http::baseUrl($this->baseUrl)
+            ->withToken($this->getToken())
+            ->withHeaders([
+                'Accept' => 'application/json',
+            ])
+            ->timeout(30)
+            ->retry(2, 500);
     }
 
-    public function postFile(string $endpoint, array $body = [])
+    public function get(string $endpoint): array
     {
-        $auth = $this->signature->symmetricSignature(
-            'POST',
-            $endpoint,
-            $body
-        );
-
-        $bodyJson = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        return Http::withHeaders([
-            'Authorization' => $auth['authorization'],
-            'X-TIMESTAMP'   => $auth['timestamp'],
-            'X-SIGNATURE'   => $auth['signature'],
-        ])->withBody($bodyJson, 'application/json')
-            ->post($this->baseUrl . $endpoint);
+        return $this->handle(fn() => $this->client()->get($endpoint), $endpoint);
     }
 
-    public function get(string $endpoint)
+    public function post(string $endpoint, array $data = []): array
     {
-        $auth = $this->signature->symmetricSignature(
-            'GET',
-            $endpoint
-        );
-
-        return Http::withHeaders([
-            'Authorization' => $auth['authorization'],
-            'X-TIMESTAMP'   => $auth['timestamp'],
-            'X-SIGNATURE'   => $auth['signature'],
-        ])->get(
-            $this->baseUrl . $endpoint
-        )->json();
+        return $this->handle(fn() => $this->client()->post($endpoint, $data), $endpoint);
     }
 
-    public function put(string $endpoint, array $body = [])
+    public function postFile(string $endpoint, array $data = []): Response
     {
-        $auth = $this->signature->symmetricSignature(
-            'PUT',
-            $endpoint,
-            $body
-        );
-
-        $bodyJson = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        return Http::withHeaders([
-            'Authorization' => $auth['authorization'],
-            'X-TIMESTAMP'   => $auth['timestamp'],
-            'X-SIGNATURE'   => $auth['signature'],
-        ])->withBody($bodyJson, 'application/json')
-            ->put($this->baseUrl . $endpoint)
-            ->json();
+        return $this->client()->post($endpoint, $data);
     }
 
-    public function delete(string $endpoint)
+    private function getToken(): ?string
     {
-        $auth = $this->signature->symmetricSignature(
-            'DELETE',
-            $endpoint
-        );
+        return Cache::get(self::TOKEN_CACHE_KEY) ?? $this->requestToken();
+    }
 
-        return Http::withHeaders([
-            'Authorization' => $auth['authorization'],
-            'X-TIMESTAMP'   => $auth['timestamp'],
-            'X-SIGNATURE'   => $auth['signature'],
-        ])->delete(
-            $this->baseUrl . $endpoint
-        )->json();
+    private function requestToken(): ?string
+    {
+        $refreshToken = Cache::get(self::REFRESH_TOKEN_CACHE_KEY);
+
+        try {
+            $response = $refreshToken
+                ? Http::baseUrl($this->baseUrl)
+                    ->timeout(30)
+                    ->post('api/v1/auth/refresh', [
+                        'refreshToken' => $refreshToken,
+                    ])
+                : Http::baseUrl($this->baseUrl)
+                    ->timeout(30)
+                    ->post('api/v1/auth/login', [
+                        'clientId' => $this->clientId,
+                        'clientSecret' => $this->clientSecret,
+                    ]);
+
+            if ($response->successful()) {
+                $data = $response->json('data');
+
+                Cache::put(self::TOKEN_CACHE_KEY, $data['accessToken'], max(($data['accessTokenExpiresIn'] ?? 3600) - 10, 5));
+                Cache::put(self::REFRESH_TOKEN_CACHE_KEY, $data['refreshToken'], $data['refreshTokenExpiresIn'] ?? 2592000);
+
+                return $data['accessToken'];
+            }
+
+            Log::error('ApiService: Gagal mendapatkan token.', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        } catch (Exception $e) {
+            Log::error('ApiService: Exception saat request token.', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
+    }
+
+    private function handle(Closure $request, string $endpoint): array
+    {
+        try {
+            /** @var Response $response */
+            $response = $request();
+
+            if ($response->status() === 401) {
+                Cache::forget(self::TOKEN_CACHE_KEY);
+                $response = $request();
+            }
+
+            if (!$response->successful()) {
+                Log::error('ApiService: HTTP request gagal.', [
+                    'endpoint' => $endpoint,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return [
+                    'error_code' => $response->status(),
+                    'error_desc' => 'HTTP error: ' . $response->status(),
+                    'data' => null,
+                ];
+            }
+
+            return [
+                'error_code' => 0,
+                'error_desc' => '',
+                'data' => $response->json(),
+            ];
+        } catch (Exception $e) {
+            Log::error('ApiService: Exception pada request.', [
+                'endpoint' => $endpoint,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'error_code' => 1,
+                'error_desc' => 'Request error: ' . $e->getMessage(),
+                'data' => null,
+            ];
+        }
     }
 }

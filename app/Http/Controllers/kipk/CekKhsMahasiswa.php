@@ -10,13 +10,13 @@ use App\Models\PenerimaBeasiswa;
 use App\Models\Prodi;
 use App\Models\TahunAkademik;
 use App\Services\ApiService;
-use App\Services\DataService;
+use App\Services\MasterApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 
 class CekKhsMahasiswa extends Controller
 {
-     public function __construct(protected ApiService $api) {}
+    public function __construct(protected ApiService $api) {}
     public function index(Request $request)
     {
         $d['tahun_akademik'] = TahunAkademik::all();
@@ -121,7 +121,7 @@ class CekKhsMahasiswa extends Controller
 
         foreach ($nim_array as $nim) {
 
-            if (!isset($krs[$nim])) {
+            if (!isset($krs[$nim]) && isset($masterMahasiswa[$nim])) {
 
                 $nama = $masterMahasiswa[$nim]->nama_mahasiswa ?? '';
                 $kodeProdi = $masterMahasiswa[$nim]->kode_program_studi ?? null;
@@ -146,9 +146,10 @@ class CekKhsMahasiswa extends Controller
 
         return view('kipk.view', $data);
     }
-    public function show($npm, DataService $dataService)
+    public function show($npm, MasterApiService $dataService)
     {
         $krs = $dataService->krs($npm);
+
         $masterProdi = Prodi::all()->keyBy('kode_program_studi');
         $masterkelas = KelasPerkuliahan::all()->keyBy('id');
 
@@ -173,7 +174,7 @@ class CekKhsMahasiswa extends Controller
     }
     public function khsCetak($npm, $periode)
     {
-        $response = $this->api->postFile('/api/khs/cetak', [
+        $response = $this->api->postFile('/api/v1/khs/cetak', [
             'npm' => $npm,
             'periode' => $periode
         ]);

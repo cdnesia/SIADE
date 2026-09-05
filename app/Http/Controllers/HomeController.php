@@ -10,4 +10,10 @@ class HomeController extends Controller
     {
         return view('home');
     }
+
+
+    // $cek = $api->cetakKhs();
+
+    //     return response($cek->body(), $cek->status())
+    //         ->header('Content-Type', $cek->header('Content-Type'));
 }

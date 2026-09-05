@@ -6,7 +6,7 @@ use App\Models\Hari;
 use App\Models\JadwalPerkuliahan;
 use App\Models\KelasPerkuliahan;
 use App\Models\Prodi;
-use App\Services\DataService;
+use App\Services\MasterApiService;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -18,9 +18,9 @@ class JadwalDosenController extends Controller
         view()->share('modul', $this->modul);
     }
 
-    public function index(Request $request, DataService $dataService)
+    public function index(Request $request, MasterApiService $dataService)
     {
-        $masterDosen = collect($dataService->dataDosen())->keyBy('id');
+        $masterDosen = collect($dataService->dataDosen()['data']['data'])->keyBy('id')->toArray();
 
         if ($request->ajax()) {
             $query = JadwalPerkuliahan::from('tbl_jadwal_perkuliahan as j')
@@ -105,7 +105,7 @@ class JadwalDosenController extends Controller
             ->distinct()
             ->orderBy('ruang_id')
             ->pluck('ruang_id');
-        $dosen = collect($dataService->dataDosen())->sortBy('nama_lengkap')->values();
+        $dosen = collect($dataService->dataDosen()['data']['data'])->sortBy('nama_lengkap')->values();
 
         return view('jadwal-dosen.view', compact('prodi', 'kelas', 'hari', 'tahunAkademik', 'ruang', 'dosen'));
     }

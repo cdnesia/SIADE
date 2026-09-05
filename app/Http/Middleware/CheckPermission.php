@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\DataService;
+use App\Services\MasterApiService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -13,7 +13,7 @@ class CheckPermission
 {
     protected $service;
 
-    public function __construct(DataService $service)
+    public function __construct(MasterApiService $service)
     {
         $this->service = $service;
     }

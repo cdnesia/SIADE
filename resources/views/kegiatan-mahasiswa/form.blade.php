@@ -126,7 +126,7 @@
                         @foreach ($bipot as $item)
                             <option value="{{ $item['id'] }}"
                                 {{ old('nama_biaya', $data->id_bipot ?? '') == $item['id'] ? 'selected' : '' }}>
-                                {{ $item['nama_bipot'] }}
+                                {{ $item['namaBipot'] }}
                             </option>
                         @endforeach
                         @error('nama_biaya')

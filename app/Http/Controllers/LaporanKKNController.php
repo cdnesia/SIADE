@@ -2,38 +2,37 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\MasterApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-class LaporanKKN extends Controller
+class LaporanKKNController extends Controller
 {
-    public function index()
+    public function index(MasterApiService $api)
     {
-        $status = collect($this->cekTagihanKKN())
-            ->pluck('npm')
-            ->unique()
-            ->toArray();
-
-        $status = collect($status)
-            ->map(function ($item) {
-                return (int) $item;
-            })
-            ->toArray();
-
         $pendaftarKKN = DB::table('tbl_pendaftaran_kegiatan_mahasiswa as tpkm')
             ->join('master_mahasiswa as mm', 'tpkm.npm', '=', 'mm.npm')
             ->join('master_program_studi as mps', 'mm.kode_program_studi', '=', 'mps.kode_program_studi')
             ->join('tbl_kegiatan_mahasiswa as tkm', 'tpkm.kegiatan_mahasiswa_id', '=', 'tkm.id')
             ->select('tpkm.*', 'mm.nama_mahasiswa', 'mps.nama_program_studi_idn', 'tkm.nama_kegiatan')
+            ->where('tkm.tipe','KKN')
             ->get();
 
-        $pendaftarKKN = $pendaftarKKN->map(function ($item) use ($status) {
-            // ganti dengan parameter yang sesuai
-            $item->status_bayar = in_array($item->npm, $status) ? 'Sudah Bayar' : 'Belum Bayar';
+        
+        $npms = $pendaftarKKN->pluck('npm')->unique()->values()->toArray();
 
+        $cekPembayaran = $api->cekTagihanKKN($npms);
+
+        $status = collect($cekPembayaran['data']['data'] ?? [])
+            ->filter(fn ($tagihan) => (float) $tagihan['nominal_terbayar'] === (float) $tagihan['total_tagihan'])
+            ->pluck('npm')
+            ->toArray();
+
+        $pendaftarKKN = $pendaftarKKN->map(function ($item) use ($status) {
+            $item->status_bayar = in_array($item->npm, $status) ? 'Sudah Bayar' : 'Belum Bayar';
             return $item;
         });
 
@@ -67,33 +66,5 @@ class LaporanKKN extends Controller
                 'kegiatan_mahasiswa_id' => $request->kegiatan_id,
             ]);
         return redirect()->route('laporan-kkn.index')->with('success', 'Laporan KKN berhasil diperbarui');
-    }
-    private function cekTagihanKKN()
-    {
-        $url = config('services.simaku_url');
-        $timestamp = time();
-        $nonce = Str::uuid()->toString();
-        $path = 'api/cek-tagihan-kkn';
-
-        $body = json_encode([]);
-
-        $data = $timestamp . $nonce . 'POST' . $path . $body;
-        $signature = hash_hmac('sha256', $data, config('services.hmac_secret'));
-        $response = Http::withHeaders([
-            'X-API-KEY'   => config('services.hmac_api_key'),
-            'X-TIMESTAMP' => $timestamp,
-            'X-NONCE'     => $nonce,
-            'X-SIGNATURE' => $signature,
-        ])->withBody($body, 'application/json')
-            ->post($url . $path);
-
-        $responseData = $response->json();
-
-        $data = $responseData['data'] ?? [];
-
-        if (empty($data)) {
-            return [];
-        }
-        return $data;
     }
 }

@@ -102,6 +102,29 @@ return [
             ]) : [],
         ],
 
+        // Template koneksi database external tambahan. Ganti nama key
+        // ('external_db') dan suffix env (_4) sesuai kebutuhan, lalu
+        // isi kredensialnya di .env.
+        'external_db' => [
+            'driver' => 'mariadb',
+            'url' => env('DB_URL'),
+            'host' => env('DB_HOST_4', '127.0.0.1'),
+            'port' => env('DB_PORT_4', '3306'),
+            'database' => env('DB_DATABASE_4', 'laravel'),
+            'username' => env('DB_USERNAME_4', 'root'),
+            'password' => env('DB_PASSWORD_4', ''),
+            'unix_socket' => env('DB_SOCKET_4', ''),
+            'charset' => env('DB_CHARSET_4', 'utf8mb4'),
+            'collation' => env('DB_COLLATION_4', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),

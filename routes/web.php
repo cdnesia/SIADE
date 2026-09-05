@@ -10,6 +10,7 @@ use App\Http\Controllers\KalenderAkademikController;
 use App\Http\Controllers\KegiatanMahasiswaController;
 use App\Http\Controllers\kipk\CekKhsMahasiswa;
 use App\Http\Controllers\LaporanKKN;
+use App\Http\Controllers\LaporanKKNController;
 use App\Http\Controllers\LaporanPenerimaBeasiswaController;
 use App\Http\Controllers\LembagaBeasiswaController;
 use App\Http\Controllers\MahasiswaBaruController;
@@ -39,6 +40,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::post('mahasiswa/khs/{id}/update-nilai', [MahasiswaController::class, 'khsUpdateNilai'])->name('mahasiswa.khs.update-nilai');
     Route::post('mahasiswa/detail/akm/{npm}/update', [MahasiswaController::class, 'akmUpdateStatus'])->name('mahasiswa.detail.akm.update');
     Route::get('mahasiswa/detail/khs/{id}', [MahasiswaController::class, 'khs'])->name('mahasiswa.detail.khs');
+    Route::get('mahasiswa/khs/{npm}/{periode}/cetak', [MahasiswaController::class, 'cetakKhs'])->name('mahasiswa.khs.cetak');
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('mahasiswa-ptrpl', MahasiswaPTRPLController::class)->only('index');
     Route::get('mahasiswa-ptrpl/import', [MahasiswaPTRPLController::class, 'importForm'])->name('mahasiswa-ptrpl.import');
@@ -81,9 +83,9 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     });
 
     Route::prefix('laporan-kkn')->name('laporan-kkn.')->group(function () {
-        Route::get('/', [LaporanKKN::class, 'index'])->name('index');
-        Route::get('/{id}/edit', [LaporanKKN::class, 'edit'])->name('edit');
-        Route::put('/{id}', [LaporanKKN::class, 'update'])->name('update');
+        Route::get('/', [LaporanKKNController::class, 'index'])->name('index');
+        Route::get('/{id}/edit', [LaporanKKNController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [LaporanKKNController::class, 'update'])->name('update');
     });
 
     Route::prefix('mahasiswa-baru')->name('mahasiswa-baru.')->group(function () {

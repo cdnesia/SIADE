@@ -6,7 +6,7 @@ use App\Models\KegiatanMahasiswa;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Services\ApiService;
-use App\Services\DataService;
+use App\Services\MasterApiService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -24,7 +24,7 @@ class KegiatanMahasiswaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(DataService $dataService)
+    public function index(MasterApiService $dataService)
     {
         $kegiatans = DB::table('tbl_kegiatan_mahasiswa as km')
             ->select('km.*', 'kp.nama_program_perkuliahan')
@@ -51,12 +51,12 @@ class KegiatanMahasiswaController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create(ApiService $api)
+    public function create(MasterApiService $api)
     {
         $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
         $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
         $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
-        $d['bipot'] = $api->post('/api/bipot')['data'] ?? [];
+        $d['bipot'] = $api->bipot()['data']['data']['biaya'] ?? [];
         $d['data'] = null;
         return view('kegiatan-mahasiswa.form', $d);
     }
@@ -101,14 +101,14 @@ class KegiatanMahasiswaController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id, ApiService $api)
+    public function edit(string $id, MasterApiService $api)
     {
         try {
             $id = Crypt::decrypt($id);
             $d['data'] = KegiatanMahasiswa::findOrFail($id);
             $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
             $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
-            $d['bipot'] = $api->post('/api/bipot')['data'] ?? [];
+            $d['bipot'] = $api->bipot()['data']['data']['biaya'] ?? [];
             $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
             return view('kegiatan-mahasiswa.form', $d);
         } catch (DecryptException $e) {

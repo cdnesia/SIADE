@@ -117,7 +117,6 @@
                         </ul>
                     </div>
                     <div class="user-box dropdown px-3">
-                        @inject('data_saya', 'App\Services\DataService')
                         <a class="d-flex align-items-center nav-link dropdown-toggle gap-3 dropdown-toggle-nocaret"
                             href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             @php($foto = Auth::user()?->mahasiswa?->foto)

@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Akm;
 use App\Models\KRS;
 use App\Models\Mahasiswa;
-use App\Services\DataService;
+use App\Services\MasterApiService;
 use Illuminate\Console\Command;
 
 class GenerateAkm extends Command
@@ -30,7 +30,7 @@ class GenerateAkm extends Command
      */
     private const STATUS_OTOMATIS = ['A', 'N'];
 
-    public function handle(DataService $dataService)
+    public function handle(MasterApiService $dataService)
     {
         set_time_limit(0);
 

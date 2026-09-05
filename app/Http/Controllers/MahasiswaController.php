@@ -13,7 +13,7 @@ use App\Models\Mahasiswa;
 use App\Models\PenerimaBeasiswa;
 use App\Models\Prodi;
 use App\Models\SkalaNilai;
-use App\Services\DataService;
+use App\Services\MasterApiService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -100,7 +100,7 @@ class MahasiswaController extends Controller
     }
     public function create() {}
     public function store() {}
-    public function show(Request $request, $id, DataService $dataService)
+    public function show(Request $request, $id, MasterApiService $api)
     {
         $page = $request->input('p', 'detail-mahasiswa');
 
@@ -110,7 +110,8 @@ class MahasiswaController extends Controller
         $masterFakultas = Fakultas::all()->keyBy('id');
         $masterKelas = KelasPerkuliahan::all()->keyBy('id');
         $masterJenisPendaftaran = DB::table('master_jenis_pendaftaran')->get()->keyBy('id');
-        $masterDosen = collect($dataService->dataDosen())
+
+        $masterDosen = collect($api->dataDosen()['data']['data'])
             ->map(function ($item) {
                 return [
                     'id' => $item['id'],
@@ -151,8 +152,10 @@ class MahasiswaController extends Controller
             ];
         })->toArray();
 
+
         $encryptedNpm = Crypt::encrypt($mahasiswa['npm']);
-        $d['krs'] = $dataService->krs($encryptedNpm);
+
+        $d['krs'] = $api->krs($encryptedNpm);
         $d['akm'] = Akm::where('npm', $mahasiswa['npm'])->get()->keyBy('kode_tahun_akademik');
         $d['mahasiswa'] = $mahasiswa;
         $d['page'] = $page;
@@ -262,14 +265,14 @@ class MahasiswaController extends Controller
             'message' => 'Data KRS berhasil dihapus'
         ]);
     }
-    public function krs($id, DataService $service)
+    public function krs($id, MasterApiService $service)
     {
         $krs = $service->krs($id);
 
         $d['krs'] = $krs;
         return view('mahasiswa.krs', $d);
     }
-    public function khs($id, DataService $service)
+    public function khs($id, MasterApiService $service)
     {
         $krs = $service->krs($id);
         $flatKrs = collect($krs)
@@ -295,6 +298,16 @@ class MahasiswaController extends Controller
         $d['krs'] = $krs;
         $d['matakuliah'] = $mataKuliah;
         return view('mahasiswa.khs', $d);
+    }
+    public function cetakKhs($npm, $periode, MasterApiService $api)
+    {
+        $npm = Crypt::decrypt($npm);
+
+        $response = $api->cetakKhs($npm, $periode);
+
+        return response($response->body(), $response->status())
+            ->header('Content-Type', $response->header('Content-Type'))
+            ->header('Content-Disposition', 'inline; filename="KHS-' . $npm . '-' . $periode . '.pdf"');
     }
     public function khsUpdateNilai($id, Request $request)
     {
