@@ -45,8 +45,10 @@ class MahasiswaBaruController extends Controller
         $dataLolos = [];
 
         if ($result['data']['success'] ?? false) {
-            foreach (($result['data']['data'] ?? []) as $npm => $tagihanList) {
-                foreach (($tagihanList ?? []) as $tagihan) {
+            $tagihanByNpm = collect($result['data']['data'] ?? [])->groupBy('npm');
+
+            foreach ($tagihanByNpm as $npm => $tagihanList) {
+                foreach ($tagihanList as $tagihan) {
                     $total = (float) ($tagihan['total_tagihan'] ?? 0);
                     $terbayar = (float) ($tagihan['nominal_terbayar'] ?? 0);
 
@@ -67,7 +69,7 @@ class MahasiswaBaruController extends Controller
         $prodis = DB::connection('penmaru_old')
             ->table('master_sub_unit_kerja as msuk')
             ->select('kode', 'nim_prodi_kode', 'jenjang', 'msuk.nama')
-                ->join('master_pendidikan as mp', 'mp.id', 'msuk.id_pendidikan')
+            ->join('master_pendidikan as mp', 'mp.id', 'msuk.id_pendidikan')
             ->where('kode', '!=', '')
             ->get()->keyBy('kode')->toArray();
 
