@@ -49,8 +49,6 @@ class MahasiswaBaruController extends Controller
 
             foreach ($tagihanByNpm as $npm => $tagihanList) {
 
-            dd($tagihanList);
-
                 foreach ($tagihanList as $tagihan) {
                     $total = (float) ($tagihan['total_tagihan'] ?? 0);
                     $terbayar = (float) ($tagihan['nominal_terbayar'] ?? 0);
