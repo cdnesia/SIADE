@@ -42,6 +42,8 @@ class MahasiswaBaruController extends Controller
             ]
         );
 
+        dd($result);
+
         $dataLolos = [];
 
         if ($result['data']['success'] ?? false) {

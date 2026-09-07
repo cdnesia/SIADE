@@ -61,35 +61,50 @@ class ApiService
     {
         $refreshToken = Cache::get(self::REFRESH_TOKEN_CACHE_KEY);
 
+        if ($refreshToken) {
+            $token = $this->authenticate('api/v1/auth/refresh', [
+                'refreshToken' => $refreshToken,
+            ]);
+
+            if ($token !== null) {
+                return $token;
+            }
+
+            // Refresh token ditolak server (invalid/expired): hapus dari cache
+            // supaya tidak terus dipakai ulang, lalu login ulang dari awal.
+            Cache::forget(self::REFRESH_TOKEN_CACHE_KEY);
+        }
+
+        return $this->authenticate('api/v1/auth/login', [
+            'clientId' => $this->clientId,
+            'clientSecret' => $this->clientSecret,
+        ]);
+    }
+
+    private function authenticate(string $endpoint, array $data): ?string
+    {
         try {
-            $response = $refreshToken
-                ? Http::baseUrl($this->baseUrl)
-                    ->timeout(30)
-                    ->post('api/v1/auth/refresh', [
-                        'refreshToken' => $refreshToken,
-                    ])
-                : Http::baseUrl($this->baseUrl)
-                    ->timeout(30)
-                    ->post('api/v1/auth/login', [
-                        'clientId' => $this->clientId,
-                        'clientSecret' => $this->clientSecret,
-                    ]);
+            $response = Http::baseUrl($this->baseUrl)
+                ->timeout(30)
+                ->post($endpoint, $data);
 
             if ($response->successful()) {
-                $data = $response->json('data');
+                $responseData = $response->json('data');
 
-                Cache::put(self::TOKEN_CACHE_KEY, $data['accessToken'], max(($data['accessTokenExpiresIn'] ?? 3600) - 10, 5));
-                Cache::put(self::REFRESH_TOKEN_CACHE_KEY, $data['refreshToken'], $data['refreshTokenExpiresIn'] ?? 2592000);
+                Cache::put(self::TOKEN_CACHE_KEY, $responseData['accessToken'], max(($responseData['accessTokenExpiresIn'] ?? 3600) - 10, 5));
+                Cache::put(self::REFRESH_TOKEN_CACHE_KEY, $responseData['refreshToken'], $responseData['refreshTokenExpiresIn'] ?? 2592000);
 
-                return $data['accessToken'];
+                return $responseData['accessToken'];
             }
 
             Log::error('ApiService: Gagal mendapatkan token.', [
+                'endpoint' => $endpoint,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
         } catch (Exception $e) {
             Log::error('ApiService: Exception saat request token.', [
+                'endpoint' => $endpoint,
                 'message' => $e->getMessage(),
             ]);
         }
