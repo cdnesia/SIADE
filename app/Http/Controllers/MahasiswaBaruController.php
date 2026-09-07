@@ -48,6 +48,9 @@ class MahasiswaBaruController extends Controller
             $tagihanByNpm = collect($result['data']['data'] ?? [])->groupBy('npm');
 
             foreach ($tagihanByNpm as $npm => $tagihanList) {
+
+            dd($tagihanList);
+
                 foreach ($tagihanList as $tagihan) {
                     $total = (float) ($tagihan['total_tagihan'] ?? 0);
                     $terbayar = (float) ($tagihan['nominal_terbayar'] ?? 0);
@@ -65,6 +68,8 @@ class MahasiswaBaruController extends Controller
                 }
             }
         }
+
+        dd($dataLolos);
 
         $prodis = DB::connection('penmaru_old')
             ->table('master_sub_unit_kerja as msuk')
