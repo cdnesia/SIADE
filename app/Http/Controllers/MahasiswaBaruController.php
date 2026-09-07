@@ -67,8 +67,6 @@ class MahasiswaBaruController extends Controller
             }
         }
 
-        dd($dataLolos);
-
         $prodis = DB::connection('penmaru_old')
             ->table('master_sub_unit_kerja as msuk')
             ->select('kode', 'nim_prodi_kode', 'jenjang', 'msuk.nama')
