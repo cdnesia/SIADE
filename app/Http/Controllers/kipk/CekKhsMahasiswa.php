@@ -179,6 +179,13 @@ class CekKhsMahasiswa extends Controller
             'periode' => $periode
         ]);
 
+        if (!$response->successful()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mencetak KHS. Coba lagi.',
+            ], $response->status());
+        }
+
         return response($response->body(), $response->status())
             ->header('Content-Type', $response->header('Content-Type') ?: 'application/pdf');
     }
