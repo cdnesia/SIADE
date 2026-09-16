@@ -146,21 +146,30 @@ class PenerimaBeasiswaController extends Controller
         $import = new PenerimaBeasiswaImport();
         Excel::import($import, $request->file('file'));
 
+        $summary = [
+            'berhasil' => $import->berhasil,
+            'gagal' => count($import->errors),
+            'digabung' => $import->digabung,
+        ];
+
+        $redirect = redirect()
+            ->route($this->modul . '.import')
+            ->with('import_summary', $summary)
+            ->with('import_errors', $import->errors);
+
         if ($import->berhasil > 0) {
             $pesan = "{$import->berhasil} data penerima beasiswa berhasil diupdate.";
-            if (!empty($import->errors)) {
-                $pesan .= ' ' . count($import->errors) . ' baris dilewati karena error.';
+            if ($import->digabung > 0) {
+                $pesan .= " {$import->digabung} baris duplikat (NPM & lembaga sama) berhasil digabung.";
             }
-            return redirect()
-                ->route($this->modul . '.import')
-                ->with('success', $pesan)
-                ->with('import_errors', $import->errors);
+            return $redirect->with('success', $pesan);
         }
 
-        return redirect()
-            ->route($this->modul . '.import')
-            ->with('error', 'Tidak ada data yang berhasil diimport.')
-            ->with('import_errors', $import->errors);
+        if ($import->digabung > 0) {
+            return $redirect->with('success', "Tidak ada data yang diupdate dari file, tapi {$import->digabung} baris duplikat (NPM & lembaga sama) berhasil digabung.");
+        }
+
+        return $redirect->with('error', 'Tidak ada data yang berhasil diimport.');
     }
 
     /**
