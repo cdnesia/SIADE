@@ -5,6 +5,9 @@
             <h6 class="mb-0">Penerima Beasiswa</h6>
             <div class="ms-auto">
                 @can($modul . '.create')
+                    <a href="{{ route($modul . '.import') }}" class="btn btn-sm btn-secondary me-1">
+                        <i class="bx bx-upload me-0"></i> Import
+                    </a>
                     <a href="{{ route($modul . '.create') }}" class="btn btn-sm btn-primary">Tambah Data</a>
                 @endcan
 

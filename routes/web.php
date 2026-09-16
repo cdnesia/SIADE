@@ -54,6 +54,9 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
 
     Route::resource('lembaga-beasiswa', LembagaBeasiswaController::class)->except('show');
     Route::resource('penerima-beasiswa', PenerimaBeasiswaController::class)->except('show');
+    Route::get('penerima-beasiswa/import', [PenerimaBeasiswaController::class, 'importForm'])->name('penerima-beasiswa.import');
+    Route::post('penerima-beasiswa/import', [PenerimaBeasiswaController::class, 'importStore'])->name('penerima-beasiswa.import.store');
+    Route::get('penerima-beasiswa/import/template', [PenerimaBeasiswaController::class, 'downloadTemplate'])->name('penerima-beasiswa.import.template');
     Route::resource('laporan-penerima-beasiswa', LaporanPenerimaBeasiswaController::class)->only('index');
 
     Route::resource('users', UsersController::class)->except('show');

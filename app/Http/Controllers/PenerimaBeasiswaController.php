@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\PenerimaBeasiswaTemplateExport;
+use App\Imports\PenerimaBeasiswaImport;
 use App\Models\LembagaBeasiswa;
 use App\Models\Mahasiswa;
 use App\Models\PenerimaBeasiswa;
@@ -9,6 +11,7 @@ use App\Models\TahunAkademik;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PenerimaBeasiswaController extends Controller
 {
@@ -119,6 +122,53 @@ class PenerimaBeasiswaController extends Controller
 
         return redirect()->route($this->modul . '.index')
             ->with('success', 'Data berhasil diupdate');
+    }
+
+    /**
+     * Show the form for importing data from Excel.
+     */
+    public function importForm()
+    {
+        return view($this->modul . '.import');
+    }
+
+    /**
+     * Proses import tahun akademik penerima beasiswa dari file Excel.
+     * Baris berisi npm + tahun_akademik akan menambahkan tahun_akademik
+     * tersebut ke data penerima beasiswa yang sudah ada untuk npm itu.
+     */
+    public function importStore(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv',
+        ]);
+
+        $import = new PenerimaBeasiswaImport();
+        Excel::import($import, $request->file('file'));
+
+        if ($import->berhasil > 0) {
+            $pesan = "{$import->berhasil} data penerima beasiswa berhasil diupdate.";
+            if (!empty($import->errors)) {
+                $pesan .= ' ' . count($import->errors) . ' baris dilewati karena error.';
+            }
+            return redirect()
+                ->route($this->modul . '.import')
+                ->with('success', $pesan)
+                ->with('import_errors', $import->errors);
+        }
+
+        return redirect()
+            ->route($this->modul . '.import')
+            ->with('error', 'Tidak ada data yang berhasil diimport.')
+            ->with('import_errors', $import->errors);
+    }
+
+    /**
+     * Download template Excel untuk import tahun akademik penerima beasiswa.
+     */
+    public function downloadTemplate()
+    {
+        return Excel::download(new PenerimaBeasiswaTemplateExport(), 'template-penerima-beasiswa.xlsx');
     }
 
     /**
