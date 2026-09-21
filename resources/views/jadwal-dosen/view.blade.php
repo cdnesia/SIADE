@@ -58,7 +58,7 @@
                     <select id="filterRuang" class="form-select select2" data-placeholder="-- Semua Ruangan --">
                         <option value="">Semua Ruangan</option>
                         @foreach ($ruang as $r)
-                            <option value="{{ $r }}">Ruang {{ $r }}</option>
+                            <option value="{{ $r['id'] }}">{{ $r['nama'] }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -150,8 +150,10 @@
                         name: 'j.jam_mulai'
                     },
                     {
-                        data: 'ruang_id',
-                        name: 'j.ruang_id'
+                        data: 'nama_ruangan',
+                        name: 'nama_ruangan',
+                        orderable: false,
+                        searchable: false
                     },
                     {
                         data: 'kelompok',

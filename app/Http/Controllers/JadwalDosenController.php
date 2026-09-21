@@ -21,6 +21,7 @@ class JadwalDosenController extends Controller
     public function index(Request $request, MasterApiService $dataService)
     {
         $masterDosen = collect($dataService->dataDosen()['data']['data'])->keyBy('id')->toArray();
+        $masterRuangan = collect($dataService->dataRuangan()['data']['data'])->keyBy('id')->toArray();
 
         if ($request->ajax()) {
             $query = JadwalPerkuliahan::from('tbl_jadwal_perkuliahan as j')
@@ -91,6 +92,9 @@ class JadwalDosenController extends Controller
                 ->addColumn('jam', function ($row) {
                     return substr($row->jam_mulai, 0, 5) . ' - ' . substr($row->jam_selesai, 0, 5);
                 })
+                ->addColumn('nama_ruangan', function ($row) use ($masterRuangan) {
+                    return $masterRuangan[$row->ruang_id]['nama'] ?? '-';
+                })
                 ->make(true);
         }
 
@@ -101,10 +105,13 @@ class JadwalDosenController extends Controller
             ->distinct()
             ->orderByDesc('tahun_akademik')
             ->pluck('tahun_akademik');
-        $ruang = JadwalPerkuliahan::select('ruang_id')
+        $ruangIds = JadwalPerkuliahan::select('ruang_id')
             ->distinct()
-            ->orderBy('ruang_id')
             ->pluck('ruang_id');
+        $ruang = $ruangIds->map(fn($id) => [
+            'id' => $id,
+            'nama' => $masterRuangan[$id]['nama'] ?? "Ruang {$id}",
+        ])->sortBy('nama')->values();
         $dosen = collect($dataService->dataDosen()['data']['data'])->sortBy('nama_lengkap')->values();
 
         return view('jadwal-dosen.view', compact('prodi', 'kelas', 'hari', 'tahunAkademik', 'ruang', 'dosen'));

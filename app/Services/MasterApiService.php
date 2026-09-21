@@ -142,6 +142,11 @@ class MasterApiService
         return $this->api->get('api/v1/pegawai/list');
     }
 
+    public function dataRuangan()
+    {
+        return $this->api->get('api/v1/ruangan/list');
+    }
+
     public function cekTagihanKKN(array $npm)
     {
         return $this->api->post('api/v1/tagihan/cek', ['npm' => $npm, "jenisTagihan" => 'kkn']);
