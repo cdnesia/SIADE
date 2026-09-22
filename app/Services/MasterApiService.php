@@ -129,12 +129,12 @@ class MasterApiService
 
     public function bipot()
     {
-        return $this->api->get('api/v1/bipot/list');
+        return $this->api->get('public/api/v1/bipot/list');
     }
 
     public function cetakKhs(string $npm, string $periode)
     {
-        return $this->api->postFile('api/print/khs/by-npm', [
+        return $this->api->postFile('public/api/print/khs/by-npm', [
             "npm" => $npm,
             "tahunAkademik" => $periode
         ]);
@@ -142,7 +142,7 @@ class MasterApiService
 
     public function cetakKrs(string $npm, string $periode)
     {
-        return $this->api->postFile('api/print/krs/by-npm', [
+        return $this->api->postFile('public/api/print/krs/by-npm', [
             "npm" => $npm,
             "tahunAkademik" => $periode
         ]);
@@ -150,7 +150,7 @@ class MasterApiService
 
     public function dataDosen()
     {
-        return $this->api->get('api/referensi/pegawai/semua');
+        return $this->api->get('public/api/referensi/pegawai/semua');
     }
 
     public function dataRuangan()
@@ -160,6 +160,6 @@ class MasterApiService
 
     public function cekTagihanKKN(array $npm)
     {
-        return $this->api->post('api/v1/tagihan/cek', ['npm' => $npm, "jenisTagihan" => 'kkn']);
+        return $this->api->post('public/api/v1/tagihan/cek', ['npm' => $npm, "jenisTagihan" => 'kkn']);
     }
 }
