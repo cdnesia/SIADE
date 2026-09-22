@@ -66,6 +66,8 @@ class MasterApiService
         $tahunAkademikAktif = $this->tahunAkademikAktif($kode_program_studi) ?? $tahun_angkatan;
         $tahunAkademikDitempuh = $this->expandTerms($tahun_angkatan, $tahunAkademikAktif);
 
+        $masterDosen = collect($this->dataDosen()['data']['data'] ?? [])->keyBy('id');
+
         foreach ($tahunAkademikDitempuh as $key => $value) {
             if (!isset($krs[$value])) {
                 $krs[$value] = [];
@@ -109,6 +111,7 @@ class MasterApiService
                     'jam_mulai' => $row['jadwal']['jam_mulai'] ?? '',
                     'jam_selesai' => $row['jadwal']['jam_selesai'] ?? '',
                     'dosen_id' => $row['jadwal']['dosen_id'] ?? '',
+                    'nama_dosen' => $masterDosen[$row['jadwal']['dosen_id'] ?? null]['namaLengkap'] ?? '-',
                     'ruang_id' => $row['jadwal']['ruang_id'] ?? '',
                     'kelompok' => $row['jadwal']['kelompok'] ?? '',
                     'hari' => $row['hari']['nama_hari'] ?? '',

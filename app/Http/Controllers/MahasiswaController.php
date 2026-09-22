@@ -115,7 +115,7 @@ class MahasiswaController extends Controller
             ->map(function ($item) {
                 return [
                     'id' => $item['id'],
-                    'nama_lengkap' => $item['nama_lengkap'],
+                    'nama_lengkap' => $item['namaLengkap'],
                     'nidn' => $item['nidn'] ?? $item['nik']
                 ];
             })

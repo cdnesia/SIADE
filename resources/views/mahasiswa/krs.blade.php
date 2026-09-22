@@ -48,7 +48,7 @@
                                     <td>{{ $item['ruang_id'] }}</td>
                                     <td>{{ $item['jam_mulai'] }}</td>
                                     <td>{{ $item['jam_selesai'] }}</td>
-                                    <td>{{ $item['dosen_id'] }}</td>
+                                    <td>{{ $item['nama_dosen'] }}</td>
                                     <td>{{ $item['kelompok'] }}</td>
                                     @canany([$modul . '.detail.krs.destroy', $modul . '.detail.khs.edit'])
                                         <td class="d-flex gap-1 ms-auto">
