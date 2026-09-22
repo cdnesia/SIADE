@@ -308,7 +308,7 @@ class MahasiswaController extends Controller
         if (!$response->successful()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mencetak KHS. Coba lagi.',
+                'message' => $response->json('message') ?? 'Gagal mencetak KHS. Coba lagi.',
             ], $response->status());
         }
 
