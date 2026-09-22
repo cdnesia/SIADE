@@ -41,6 +41,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::post('mahasiswa/detail/akm/{npm}/update', [MahasiswaController::class, 'akmUpdateStatus'])->name('mahasiswa.detail.akm.update');
     Route::get('mahasiswa/detail/khs/{id}', [MahasiswaController::class, 'khs'])->name('mahasiswa.detail.khs');
     Route::get('mahasiswa/khs/{npm}/{periode}/cetak', [MahasiswaController::class, 'cetakKhs'])->name('mahasiswa.khs.cetak');
+    Route::get('mahasiswa/krs/{npm}/{periode}/cetak', [MahasiswaController::class, 'cetakKrs'])->name('mahasiswa.krs.cetak');
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('mahasiswa-ptrpl', MahasiswaPTRPLController::class)->only('index');
     Route::get('mahasiswa-ptrpl/import', [MahasiswaPTRPLController::class, 'importForm'])->name('mahasiswa-ptrpl.import');

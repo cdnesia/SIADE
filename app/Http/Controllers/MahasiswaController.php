@@ -111,12 +111,12 @@ class MahasiswaController extends Controller
         $masterKelas = KelasPerkuliahan::all()->keyBy('id');
         $masterJenisPendaftaran = DB::table('master_jenis_pendaftaran')->get()->keyBy('id');
 
-        $masterDosen = collect($api->dataDosen()['data']['data'])
+        $masterDosen = collect($api->dataDosen()['data']['data'] ?? [])
             ->map(function ($item) {
                 return [
-                    'id' => $item['id'],
-                    'nama_lengkap' => $item['namaLengkap'],
-                    'nidn' => $item['nidn'] ?? $item['nik']
+                    'id' => $item['id'] ?? null,
+                    'nama_lengkap' => $item['namaLengkap'] ?? '-',
+                    'nidn' => $item['nidn'] ?? $item['nik'] ?? '-'
                 ];
             })
             ->keyBy('id');
@@ -135,8 +135,8 @@ class MahasiswaController extends Controller
                 'jenis_pendaftaran_id' => $item->jenis_pendaftaran_id,
                 'nama_jenis_pendaftaran' => $masterJenisPendaftaran[$item->jenis_pendaftaran_id]->nama_jenis_pendaftaran,
                 'pa_id' => $item->pa_id,
-                'nama_pa' => $masterDosen[$item->pa_id]['nama_lengkap'],
-                'nidn_pa' => $masterDosen[$item->pa_id]['nidn'],
+                'nama_pa' => $masterDosen[$item->pa_id]['nama_lengkap'] ?? '-',
+                'nidn_pa' => $masterDosen[$item->pa_id]['nidn'] ?? '-',
             ];
         })->first();
 
@@ -315,6 +315,23 @@ class MahasiswaController extends Controller
         return response($response->body(), $response->status())
             ->header('Content-Type', $response->header('Content-Type'))
             ->header('Content-Disposition', 'inline; filename="KHS-' . $npm . '-' . $periode . '.pdf"');
+    }
+    public function cetakKrs($npm, $periode, MasterApiService $api)
+    {
+        $npm = Crypt::decrypt($npm);
+
+        $response = $api->cetakKrs($npm, $periode);
+
+        if (!$response->successful()) {
+            return response()->json([
+                'success' => false,
+                'message' => $response->json('message') ?? 'Gagal mencetak KRS. Coba lagi.',
+            ], $response->status());
+        }
+
+        return response($response->body(), $response->status())
+            ->header('Content-Type', $response->header('Content-Type'))
+            ->header('Content-Disposition', 'inline; filename="KRS-' . $npm . '-' . $periode . '.pdf"');
     }
     public function khsUpdateNilai($id, Request $request)
     {

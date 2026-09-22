@@ -140,6 +140,14 @@ class MasterApiService
         ]);
     }
 
+    public function cetakKrs(string $npm, string $periode)
+    {
+        return $this->api->postFile('api/print/krs/by-npm', [
+            "npm" => $npm,
+            "tahunAkademik" => $periode
+        ]);
+    }
+
     public function dataDosen()
     {
         return $this->api->get('api/referensi/pegawai/semua');

@@ -218,8 +218,12 @@
                                         </button>
                                     </form>
                                 @endcan
-                                <button onclick="window.print()" class="btn btn-sm btn-primary me-0"><i
-                                        class="bx bx-printer mr-1"></i> Cetak</button>
+                                @can($modul . '.krs.cetak')
+                                    <a href="{{ route('mahasiswa.krs.cetak', [$encryptedNpm, $key]) }}"
+                                        target="_blank" class="btn btn-sm btn-primary me-0">
+                                        <i class="bx bx-printer mr-1"></i> Cetak KRS
+                                    </a>
+                                @endcan
                             </div>
                         </div>
                         <div class="card-body">
