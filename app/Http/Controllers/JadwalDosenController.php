@@ -68,14 +68,14 @@ class JadwalDosenController extends Controller
             return DataTables::eloquent($query)
                 ->addIndexColumn()
                 ->addColumn('nama_dosen', function ($row) use ($masterDosen) {
-                    $nama = $masterDosen[$row->dosen_id]['nama_lengkap'] ?? '-';
+                    $nama = $masterDosen[$row->dosen_id]['namaLengkap'] ?? '-';
 
                     if (!empty($row->dosen_team)) {
                         $namaTeam = collect(explode(',', $row->dosen_team))
                             ->map(fn($id) => trim($id))
                             ->filter(fn($id) => $id !== '' && $id != $row->dosen_id)
                             ->unique()
-                            ->map(fn($id) => $masterDosen[$id]['nama_lengkap'] ?? null)
+                            ->map(fn($id) => $masterDosen[$id]['namaLengkap'] ?? null)
                             ->filter()
                             ->implode(', ');
 

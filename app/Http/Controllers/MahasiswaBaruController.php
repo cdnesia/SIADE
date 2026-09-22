@@ -14,6 +14,8 @@ class MahasiswaBaruController extends Controller
 
         $tahun_filter = 'UMJA2026';
 
+        $exclude = ['UMJA202610014', 'UMJA202610013', 'UMJA202610006'];
+
         $pmb_prodi = DB::connection('penmaru_old')
             ->table('pmb_prodi')
             ->where('na', 'N')
@@ -25,17 +27,14 @@ class MahasiswaBaruController extends Controller
 
         $gelombang_pendaftaran = $tahun_akademik[$tahun_filter]->pluck('pmb_gelombang')->unique()->values()->toArray();
 
-
-        $sudah_ada_nim = $tahun_akademik[$tahun_filter]->whereNotNull('nim')->where('nim', '!=', '');
-
-        $sudah_ada_nim_array = $sudah_ada_nim->pluck('pmb')->unique()->values()->toArray();
+        $sudah_ada_nim = $tahun_akademik[$tahun_filter]->whereNotNull('nim')->where('nim', '!=', '')->whereNotIn('pmb', $exclude);
 
         $belum_ada_nim = $tahun_akademik[$tahun_filter]->filter(fn($item) => (is_null($item->nim) || $item->nim === '') && $item->pmb_jalur != 20);
 
         $belum_ada_nim_array = $belum_ada_nim->pluck('pmb')->unique()->values()->toArray();
 
         $result = $this->api->post(
-            'api/v1/tagihan/cek',
+            'api/tagihan/cek',
             [
                 "npm"             => $belum_ada_nim_array,
                 "tahunAkademik"   => $gelombang_pendaftaran,
@@ -77,8 +76,6 @@ class MahasiswaBaruController extends Controller
         $data_mahasiswa = $belum_ada_nim->keyBy('pmb');
 
         $kode_tahun = substr($tahun_filter, 6, 2);
-
-        $exclude = ['UMJA202610014', 'UMJA202610013', 'UMJA202610006'];
 
         $hasil = [];
 

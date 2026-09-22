@@ -40,7 +40,7 @@
                     <select id="filterDosen" class="form-select select2" data-placeholder="-- Semua Dosen --">
                         <option value="">Semua Dosen</option>
                         @foreach ($dosen as $d)
-                            <option value="{{ $d['id'] }}">{{ $d['nama_lengkap'] }}</option>
+                            <option value="{{ $d['id'] }}">{{ $d['namaLengkap'] }}</option>
                         @endforeach
                     </select>
                 </div>

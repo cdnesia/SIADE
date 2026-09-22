@@ -131,7 +131,7 @@ class MasterApiService
 
     public function cetakKhs(string $npm, string $periode)
     {
-        return $this->api->postFile('api/v1/khs/cetak', [
+        return $this->api->postFile('api/khs/cetak', [
             "npm" => $npm,
             "periode" => $periode
         ]);
@@ -139,12 +139,12 @@ class MasterApiService
 
     public function dataDosen()
     {
-        return $this->api->get('api/v1/pegawai/list');
+        return $this->api->get('api/referensi/pegawai/semua');
     }
 
     public function dataRuangan()
     {
-        return $this->api->get('api/v1/ruangan/list');
+        return $this->api->get('api/referensi/ruangan/semua');
     }
 
     public function cekTagihanKKN(array $npm)
