@@ -129,7 +129,7 @@ class MasterApiService
 
     public function bipot()
     {
-        return $this->api->get('public/api/v1/bipot/list');
+        return $this->api->get('public/api/referensi/biaya-potongan/semua');
     }
 
     public function cetakKhs(string $npm, string $periode)
