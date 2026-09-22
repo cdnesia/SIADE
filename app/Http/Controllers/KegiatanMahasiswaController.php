@@ -56,7 +56,7 @@ class KegiatanMahasiswaController extends Controller
         $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
         $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
         $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
-        $d['bipot'] = $api->bipot()['data']['data']['biaya'] ?? [];
+        $d['bipot'] = $api->bipot()['data']['data'] ?? [];
         $d['data'] = null;
         return view('kegiatan-mahasiswa.form', $d);
     }
@@ -108,7 +108,7 @@ class KegiatanMahasiswaController extends Controller
             $d['data'] = KegiatanMahasiswa::findOrFail($id);
             $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
             $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
-            $d['bipot'] = $api->bipot()['data']['data']['biaya'] ?? [];
+            $d['bipot'] = $api->bipot()['data']['data'] ?? [];
             $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
             return view('kegiatan-mahasiswa.form', $d);
         } catch (DecryptException $e) {
