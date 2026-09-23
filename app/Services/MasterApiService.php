@@ -155,7 +155,7 @@ class MasterApiService
 
     public function dataRuangan()
     {
-        return $this->api->get('api/referensi/ruangan/semua');
+        return $this->api->get('public/api/referensi/ruangan/semua');
     }
 
     public function cekTagihanKKN(array $npm)
