@@ -7,50 +7,64 @@
                 agar dapat melakukan kontrak KRS.</small>
         </div>
         <div class="card-body">
-            {{-- Filter --}}
-            <form method="GET" action="{{ route($modul . '.index') }}" class="row g-2 align-items-end mb-3">
-                <div class="col-md-4">
-                    <label for="semester" class="form-label">Tahun Akademik</label>
-                    <select name="semester" id="semester" class="form-select">
-                        @foreach ($tahunAkademik as $ta)
-                            <option value="{{ $ta->kode_tahun_akademik }}" @selected($ta->kode_tahun_akademik == $semester)>
-                                {{ $ta->kode_tahun_akademik }} - {{ $ta->nama_tahun_akademik }}
-                                {{ $ta->status == 'A' ? '(Aktif)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="lembaga" class="form-label">Beasiswa</label>
-                    <select name="lembaga" id="lembaga" class="form-select">
-                        <option value="">Semua Beasiswa</option>
-                        @foreach ($lembaga as $l)
-                            <option value="{{ $l->id }}" @selected($l->id == $idLembaga)>
-                                {{ $l->nama_beasiswa }} ({{ $l->nama_lembaga }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100"><i class="bx bx-filter-alt me-0"></i> Tampilkan</button>
-                </div>
-            </form>
+            {{-- Toolbar: filter (kiri) & aksi massal (kanan) --}}
+            <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+                <form method="GET" action="{{ route($modul . '.index') }}" id="form-filter"
+                    class="d-flex flex-wrap align-items-end gap-2">
+                    <div>
+                        <label for="semester" class="form-label small text-muted mb-1">Tahun Akademik</label>
+                        <select name="semester" id="semester" class="form-select form-select-sm" style="min-width:210px">
+                            @foreach ($tahunAkademik as $ta)
+                                <option value="{{ $ta->kode_tahun_akademik }}" @selected($ta->kode_tahun_akademik == $semester)>
+                                    {{ $ta->kode_tahun_akademik }} - {{ $ta->nama_tahun_akademik }}
+                                    {{ $ta->status == 'A' ? '(Aktif)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="lembaga" class="form-label small text-muted mb-1">Beasiswa</label>
+                        <select name="lembaga" id="lembaga" class="form-select form-select-sm" style="min-width:240px">
+                            <option value="">Semua Beasiswa</option>
+                            @foreach ($lembaga as $l)
+                                <option value="{{ $l->id }}" @selected($l->id == $idLembaga)>
+                                    {{ $l->nama_beasiswa }} ({{ $l->nama_lembaga }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <noscript><button type="submit" class="btn btn-sm btn-primary">Tampilkan</button></noscript>
+                </form>
 
-            {{-- Ringkasan & aksi massal --}}
-            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                <span class="badge bg-light text-dark border">Total: <span id="total">{{ $data->count() }}</span></span>
-                <span class="badge bg-success">Terverifikasi: <span id="total-verif">{{ $totalTerverifikasi }}</span></span>
-                <span class="badge bg-secondary">Belum: <span id="total-belum">{{ $data->count() - $totalTerverifikasi }}</span></span>
                 @if ($data->isNotEmpty())
-                    <div class="ms-auto d-flex gap-2">
-                        <button type="button" class="btn btn-sm btn-success" id="btn-verif-semua">
-                            <i class="bx bx-check-double me-0"></i> Verifikasi Semua yang Tampil
+                    <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="Aksi massal">
+                        <button type="button" class="btn btn-success" id="btn-verif-semua"
+                            title="Verifikasi semua baris sesuai filter & pencarian">
+                            <i class="bx bx-check-double me-1"></i>Verifikasi Semua
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger" id="btn-batal-semua">
-                            <i class="bx bx-x me-0"></i> Batalkan Semua yang Tampil
+                        <button type="button" class="btn btn-outline-secondary" id="btn-batal-semua"
+                            title="Batalkan verifikasi semua baris sesuai filter & pencarian">
+                            <i class="bx bx-undo me-1"></i>Batalkan Semua
                         </button>
                     </div>
                 @endif
+            </div>
+
+            {{-- Ringkasan progres verifikasi --}}
+            @php $persen = $data->count() ? round($totalTerverifikasi / $data->count() * 100) : 0; @endphp
+            <div class="border rounded p-2 px-3 mb-3">
+                <div class="d-flex flex-wrap align-items-center gap-3 small">
+                    <span><span class="text-muted">Total</span> <b id="total">{{ $data->count() }}</b></span>
+                    <span><i class="bx bxs-circle text-success"></i> <span class="text-muted">Terverifikasi</span>
+                        <b id="total-verif">{{ $totalTerverifikasi }}</b></span>
+                    <span><i class="bx bxs-circle text-secondary"></i> <span class="text-muted">Belum</span>
+                        <b id="total-belum">{{ $data->count() - $totalTerverifikasi }}</b></span>
+                    <span class="ms-auto text-muted"><span id="persen">{{ $persen }}</span>%</span>
+                </div>
+                <div class="progress mt-2" style="height:6px">
+                    <div class="progress-bar bg-success" id="bar-progres" role="progressbar" style="width: {{ $persen }}%"
+                        aria-valuenow="{{ $persen }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
             </div>
 
             <div class="table-responsive">
@@ -153,8 +167,11 @@
             function hitungUlang() {
                 const semua = tabel.$('.cek-verifikasi');
                 const verif = semua.filter(':checked').length;
+                const persen = semua.length ? Math.round(verif / semua.length * 100) : 0;
                 $('#total-verif').text(verif);
                 $('#total-belum').text(semua.length - verif);
+                $('#persen').text(persen);
+                $('#bar-progres').css('width', persen + '%').attr('aria-valuenow', persen);
             }
 
             // Kirim verifikasi ke server; jika gagal, kembalikan status checkbox
@@ -203,6 +220,9 @@
                     simpan(target, status);
                 }
             }
+
+            // Filter langsung diterapkan saat pilihan berubah
+            $('#semester, #lembaga').on('change', () => $('#form-filter').trigger('submit'));
 
             $('#btn-verif-semua').on('click', () => aksiMassal(true));
             $('#btn-batal-semua').on('click', () => aksiMassal(false));

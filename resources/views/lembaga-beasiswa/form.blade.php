@@ -2,7 +2,7 @@
 @section('content')
     <div class="card">
         <div class="card-header d-flex align-items-center">
-            <h6 class="mb-0">{{ $data ? 'Edit' : 'Tambah' }} Lembaga Beasisawa</h6>
+            <h6 class="mb-0">{{ $data ? 'Edit' : 'Tambah' }} Lembaga Beasiswa</h6>
             <div class="ms-auto">
                 <a href="{{ route($modul . '.index') }}" class="btn btn-sm btn-warning">Kembali</a>
             </div>
@@ -34,6 +34,29 @@
                         placeholder="Nama Lembaga">
                     @error('nama_lembaga')
                         <div class="invalid-feedback">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label d-block">Jenis Tanggungan</label>
+                    @php $tanggungan = old('jenis_tanggungan', $data->jenis_tanggungan ?? 'sebagian'); @endphp
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input @error('jenis_tanggungan') is-invalid @enderror" type="radio"
+                            name="jenis_tanggungan" id="tanggungan_penuh" value="penuh" @checked($tanggungan == 'penuh')>
+                        <label class="form-check-label" for="tanggungan_penuh">Penuh</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input @error('jenis_tanggungan') is-invalid @enderror" type="radio"
+                            name="jenis_tanggungan" id="tanggungan_sebagian" value="sebagian" @checked($tanggungan == 'sebagian')>
+                        <label class="form-check-label" for="tanggungan_sebagian">Sebagian</label>
+                    </div>
+                    <div class="form-text">
+                        Penuh: seluruh tagihan semester ditanggung (tagihan menjadi Rp0).
+                        Sebagian: tagihan dikurangi sebesar jumlah jaminan tiap penerima.
+                    </div>
+                    @error('jenis_tanggungan')
+                        <div class="invalid-feedback d-block">
                             {{ $message }}
                         </div>
                     @enderror

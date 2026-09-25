@@ -42,11 +42,13 @@ class LembagaBeasiswaController extends Controller
         $request->validate([
             'nama_beasiswa' => 'required|string|max:255',
             'nama_lembaga' => 'required|string|max:255',
+            'jenis_tanggungan' => 'required|in:penuh,sebagian',
         ]);
 
         LembagaBeasiswa::insert([
             'nama_beasiswa' => $request->nama_beasiswa,
             'nama_lembaga' => $request->nama_lembaga,
+            'jenis_tanggungan' => $request->jenis_tanggungan,
         ]);
 
         return redirect()
@@ -80,10 +82,12 @@ class LembagaBeasiswaController extends Controller
         $request->validate([
             'nama_beasiswa' => 'required|string|max:255',
             'nama_lembaga' => 'required|string|max:255',
+            'jenis_tanggungan' => 'required|in:penuh,sebagian',
         ]);
         LembagaBeasiswa::where('id', $id)->update([
             'nama_beasiswa' => $request->nama_beasiswa,
             'nama_lembaga' => $request->nama_lembaga,
+            'jenis_tanggungan' => $request->jenis_tanggungan,
         ]);
 
         return redirect()->route($this->modul . '.index')

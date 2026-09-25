@@ -2,7 +2,7 @@
 @section('content')
     <div class="card">
         <div class="card-header d-flex align-items-center">
-            <h6 class="mb-0">{{ $data ? 'Edit' : 'Tambah' }} Lembaga Beasisawa</h6>
+            <h6 class="mb-0">{{ $data ? 'Edit' : 'Tambah' }} Penerima Beasiswa</h6>
             <div class="ms-auto">
                 <a href="{{ route($modul . '.index') }}" class="btn btn-sm btn-warning">Kembali</a>
             </div>
@@ -34,14 +34,15 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Lembaga Beasiswa</label>
-                    <select name="lembaga" class="form-select select2 @error('lembaga') is-invalid @enderror"
-                        data-placeholder="--Pilih Lembaga--">
+                    <label class="form-label">Beasiswa</label>
+                    <select name="lembaga" id="pilih-lembaga" class="form-select select2 @error('lembaga') is-invalid @enderror"
+                        data-placeholder="--Pilih Beasiswa--">
                         <option value=""></option>
-                        @foreach ($lembaga as $item => $val)
-                            <option value="{{ $item }}"
-                                {{ $item == old('lembaga', $data ? $data->id_lembaga : null) ? 'selected' : '' }}>
-                                {{ $val }}</option>
+                        @foreach ($lembaga as $item)
+                            <option value="{{ $item->id }}" data-tanggungan="{{ $item->jenis_tanggungan }}"
+                                {{ $item->id == old('lembaga', $data ? $data->id_lembaga : null) ? 'selected' : '' }}>
+                                {{ $item->nama_beasiswa }} ({{ $item->nama_lembaga }}) - {{ ucfirst($item->jenis_tanggungan) }}
+                            </option>
                         @endforeach
                     </select>
                     @error('lembaga')
@@ -80,15 +81,23 @@
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Jumlah Jaminan</label>
-                    <input type="text" class="form-control @error('jumlah_jaminan') is-invalid @enderror"
-                        name="jumlah_jaminan" value="{{ old('jumlah_jaminan', $data ? (int) $data->jumlah_jaminan : '') }}"
-                        placeholder="Jumlah Jaminan">
-                    @error('jumlah_jaminan')
-                        <div class="invalid-feedback">
-                            {{ $message }}
-                        </div>
-                    @enderror
+                    <div id="wrap-jaminan">
+                        <label class="form-label" for="jumlah_jaminan">Jumlah Jaminan (Rp)</label>
+                        <input type="text" inputmode="numeric" id="jumlah_jaminan"
+                            class="form-control @error('jumlah_jaminan') is-invalid @enderror" name="jumlah_jaminan"
+                            value="{{ old('jumlah_jaminan', $data ? (int) $data->jumlah_jaminan : '') }}"
+                            placeholder="Contoh: 2500000">
+                        <div class="form-text">Nominal potongan tagihan per semester.</div>
+                        @error('jumlah_jaminan')
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+                        @enderror
+                    </div>
+                    <div id="info-penuh" class="alert alert-info py-2 mb-0" style="display:none">
+                        <i class="bx bx-info-circle me-1"></i>Beasiswa <b>penuh</b>: seluruh tagihan semester ditanggung,
+                        jumlah jaminan tidak perlu diisi.
+                    </div>
                 </div>
                 <div>
                     <button type="submit" class="btn btn-success btn-primary btn-sm">
@@ -99,3 +108,17 @@
         </div>
     </div>
 @endsection
+@push('js')
+    <script>
+        // Jumlah jaminan hanya tampil untuk beasiswa sebagian
+        $(function() {
+            function aturJaminan() {
+                const penuh = $('#pilih-lembaga option:selected').data('tanggungan') === 'penuh';
+                $('#wrap-jaminan').toggle(!penuh);
+                $('#info-penuh').toggle(penuh);
+            }
+            $('#pilih-lembaga').on('change', aturJaminan);
+            aturJaminan();
+        });
+    </script>
+@endpush

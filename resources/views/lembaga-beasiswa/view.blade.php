@@ -18,6 +18,7 @@
                             <th width="30px">No</th>
                             <th>Nama Beasiswa</th>
                             <th>Nama Lembaga</th>
+                            <th>Jenis Tanggungan</th>
                             @canany([$modul . '.edit', $modul . '.destroy'])
                                 <th width="50px">Aksi</th>
                             @endcanany
@@ -29,6 +30,13 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $item->nama_beasiswa }}</td>
                                 <td>{{ $item->nama_lembaga }}</td>
+                                <td>
+                                    @if ($item->jenis_tanggungan == 'penuh')
+                                        <span class="badge bg-primary">Penuh</span>
+                                    @else
+                                        <span class="badge bg-warning text-dark">Sebagian</span>
+                                    @endif
+                                </td>
                                 @canany([$modul . '.edit', $modul . '.destroy'])
                                     <td>
                                         @can($modul . '.edit')

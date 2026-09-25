@@ -28,7 +28,7 @@ class PenerimaBeasiswaController extends Controller
     public function index()
     {
         $allMahasiswa = Mahasiswa::with('prodi')->get()->keyBy('npm');
-        $allLembaga = LembagaBeasiswa::pluck('nama_lembaga', 'id');
+        $allLembaga = LembagaBeasiswa::all()->keyBy('id');
         $penerima = PenerimaBeasiswa::orderBy('npm', 'DESC')->get()->map(function ($item) {
             $tahun = json_decode($item->tahun_akademik, true);
             if (is_array($tahun)) {
@@ -38,7 +38,9 @@ class PenerimaBeasiswaController extends Controller
             return $item;
         });
         foreach ($penerima as $item) {
-            $item->nama_lembaga = $allLembaga[$item->id_lembaga] ?? null;
+            $item->nama_beasiswa = $allLembaga[$item->id_lembaga]->nama_beasiswa ?? null;
+            $item->nama_lembaga = $allLembaga[$item->id_lembaga]->nama_lembaga ?? null;
+            $item->jenis_tanggungan = $allLembaga[$item->id_lembaga]->jenis_tanggungan ?? null;
             $item->nama_mahasiswa = $allMahasiswa[$item->npm]->nama_mahasiswa ?? null;
             $item->program_studi = $allMahasiswa[$item->npm]->prodi->nama_program_studi_idn ?? null;
         }
@@ -52,7 +54,7 @@ class PenerimaBeasiswaController extends Controller
     public function create()
     {
         $d['mahasiswa'] = Mahasiswa::pluck('nama_mahasiswa', 'npm');
-        $d['lembaga'] = LembagaBeasiswa::pluck('nama_lembaga', 'id');
+        $d['lembaga'] = LembagaBeasiswa::orderBy('nama_beasiswa')->get();
         $d['tahun_akademik'] = TahunAkademik::all();
         $d['data'] = null;
         return view($this->modul . '.form', $d);
@@ -65,16 +67,16 @@ class PenerimaBeasiswaController extends Controller
     {
         $request->validate([
             'tahun_akademik' => 'required|array',
-            'lembaga' => 'required',
-            'jumlah_jaminan' => 'required',
+            'lembaga' => 'required|exists:master_lembaga_beasiswa,id',
             'npm' => 'required|string|max:255',
         ]);
+        $jumlahJaminan = $this->jumlahJaminan($request);
 
         PenerimaBeasiswa::insert([
             'npm' => $request->npm,
             'id_lembaga' => $request->lembaga,
             'tahun_akademik' => json_encode($request->tahun_akademik),
-            'jumlah_jaminan' => $request->jumlah_jaminan,
+            'jumlah_jaminan' => $jumlahJaminan,
         ]);
 
         return redirect()
@@ -90,7 +92,7 @@ class PenerimaBeasiswaController extends Controller
         try {
             $id = Crypt::decrypt($id);
             $d['mahasiswa'] = Mahasiswa::pluck('nama_mahasiswa', 'npm');
-            $d['lembaga'] = LembagaBeasiswa::pluck('nama_lembaga', 'id');
+            $d['lembaga'] = LembagaBeasiswa::orderBy('nama_beasiswa')->get();
             $d['tahun_akademik'] = TahunAkademik::all();
             $d['data'] = PenerimaBeasiswa::findOrFail($id);
             return view($this->modul . '.form', $d);
@@ -110,16 +112,16 @@ class PenerimaBeasiswaController extends Controller
 
         $request->validate([
             'tahun_akademik' => 'required|array',
-            'lembaga' => 'required',
-            'jumlah_jaminan' => 'required',
+            'lembaga' => 'required|exists:master_lembaga_beasiswa,id',
             'npm' => 'required|string|max:255',
         ]);
+        $jumlahJaminan = $this->jumlahJaminan($request);
         $lama = PenerimaBeasiswa::findOrFail($id);
         PenerimaBeasiswa::where('id', $id)->update([
             'npm' => $request->npm,
             'id_lembaga' => $request->lembaga,
             'tahun_akademik' => json_encode($request->tahun_akademik),
-            'jumlah_jaminan' => $request->jumlah_jaminan,
+            'jumlah_jaminan' => $jumlahJaminan,
         ]);
 
         // Hapus verifikasi yang tidak lagi berlaku: semester dicabut, atau npm/beasiswa diganti
@@ -131,6 +133,27 @@ class PenerimaBeasiswaController extends Controller
 
         return redirect()->route($this->modul . '.index')
             ->with('success', 'Data berhasil diupdate');
+    }
+
+    /**
+     * Beasiswa penuh tidak butuh jumlah jaminan (disimpan 0),
+     * beasiswa sebagian wajib mengisi jumlah jaminan lebih dari 0.
+     */
+    private function jumlahJaminan(Request $request): float
+    {
+        $lembaga = LembagaBeasiswa::find($request->lembaga);
+        if ($lembaga->jenis_tanggungan == 'penuh') {
+            return 0;
+        }
+
+        // Terima format "1.500.000" maupun "1500000"
+        $request->merge(['jumlah_jaminan' => preg_replace('/[^0-9]/', '', (string) $request->jumlah_jaminan)]);
+        $request->validate(
+            ['jumlah_jaminan' => 'required|numeric|min:1'],
+            ['jumlah_jaminan.required' => 'Jumlah jaminan wajib diisi untuk beasiswa sebagian.']
+        );
+
+        return (float) $request->jumlah_jaminan;
     }
 
     /**

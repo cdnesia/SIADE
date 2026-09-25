@@ -22,7 +22,8 @@
                             <th>NPM</th>
                             <th>Nama Mahasiswa</th>
                             <th>Program Studi</th>
-                            <th>Nama Lembaga</th>
+                            <th>Beasiswa</th>
+                            <th>Tanggungan</th>
                             <th>Tahun Akademik</th>
                             @canany([$modul . '.edit', $modul . '.destroy'])
                                 <th width="50px">Aksi</th>
@@ -36,7 +37,18 @@
                                 <td>{{ $item->npm }}</td>
                                 <td>{{ $item->nama_mahasiswa }}</td>
                                 <td>{{ $item->program_studi }}</td>
-                                <td>{{ $item->nama_lembaga }}</td>
+                                <td>
+                                    {{ $item->nama_beasiswa }}
+                                    <br><small class="text-muted">{{ $item->nama_lembaga }}</small>
+                                </td>
+                                <td>
+                                    @if ($item->jenis_tanggungan == 'penuh')
+                                        <span class="badge bg-primary">Penuh</span>
+                                    @else
+                                        <span class="badge bg-warning text-dark">Sebagian</span>
+                                        <br><small>Rp {{ number_format($item->jumlah_jaminan, 0, ',', '.') }}</small>
+                                    @endif
+                                </td>
                                 <td>{{ $item->tahun_akademik_array }}</td>
                                 @canany([$modul . '.edit', $modul . '.destroy'])
                                     <td>
