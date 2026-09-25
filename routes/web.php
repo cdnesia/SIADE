@@ -22,6 +22,7 @@ use App\Http\Controllers\RolesController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\TahunAkademikController;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\VerifikasiBeasiswaController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login', 301);
@@ -58,6 +59,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::get('penerima-beasiswa/import', [PenerimaBeasiswaController::class, 'importForm'])->name('penerima-beasiswa.import');
     Route::post('penerima-beasiswa/import', [PenerimaBeasiswaController::class, 'importStore'])->name('penerima-beasiswa.import.store');
     Route::get('penerima-beasiswa/import/template', [PenerimaBeasiswaController::class, 'downloadTemplate'])->name('penerima-beasiswa.import.template');
+    Route::resource('verifikasi-beasiswa', VerifikasiBeasiswaController::class)->only('index', 'store');
     Route::resource('laporan-penerima-beasiswa', LaporanPenerimaBeasiswaController::class)->only('index');
 
     Route::resource('users', UsersController::class)->except('show');

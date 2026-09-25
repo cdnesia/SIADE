@@ -8,6 +8,7 @@ use App\Models\LembagaBeasiswa;
 use App\Models\Mahasiswa;
 use App\Models\PenerimaBeasiswa;
 use App\Models\TahunAkademik;
+use App\Models\VerifikasiBeasiswa;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -113,12 +114,20 @@ class PenerimaBeasiswaController extends Controller
             'jumlah_jaminan' => 'required',
             'npm' => 'required|string|max:255',
         ]);
+        $lama = PenerimaBeasiswa::findOrFail($id);
         PenerimaBeasiswa::where('id', $id)->update([
             'npm' => $request->npm,
             'id_lembaga' => $request->lembaga,
             'tahun_akademik' => json_encode($request->tahun_akademik),
             'jumlah_jaminan' => $request->jumlah_jaminan,
         ]);
+
+        // Hapus verifikasi yang tidak lagi berlaku: semester dicabut, atau npm/beasiswa diganti
+        $verifikasiLama = VerifikasiBeasiswa::where('npm', $lama->npm)->where('id_lembaga', $lama->id_lembaga);
+        if ($lama->npm == $request->npm && $lama->id_lembaga == $request->lembaga) {
+            $verifikasiLama->whereNotIn('kode_tahun_akademik', $request->tahun_akademik);
+        }
+        $verifikasiLama->delete();
 
         return redirect()->route($this->modul . '.index')
             ->with('success', 'Data berhasil diupdate');
@@ -190,6 +199,12 @@ class PenerimaBeasiswaController extends Controller
 
             $data = PenerimaBeasiswa::findOrFail($id);
             $data->delete();
+
+            // Verifikasi ikut dihapus jika tidak ada lagi data penerima yang sama
+            $masihAda = PenerimaBeasiswa::where('npm', $data->npm)->where('id_lembaga', $data->id_lembaga)->exists();
+            if (!$masihAda) {
+                VerifikasiBeasiswa::where('npm', $data->npm)->where('id_lembaga', $data->id_lembaga)->delete();
+            }
 
             return redirect()
                 ->route($this->modul . '.index')

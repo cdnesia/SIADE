@@ -33,6 +33,7 @@
             'children' => [
                 ['title' => 'Lembaga Beasiswa', 'route' => 'lembaga-beasiswa.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Penerima Beasiswa', 'route' => 'penerima-beasiswa.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Verifikasi Beasiswa', 'route' => 'verifikasi-beasiswa.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Laporan Penerima Beasiswa', 'route' => 'laporan-penerima-beasiswa.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
