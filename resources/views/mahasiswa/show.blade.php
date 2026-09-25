@@ -46,9 +46,13 @@
                             <span class="text-secondary">{{ $mahasiswa['nidn_pa'] }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
-                            <h6 class="mb-0">Status KIPK</h6>
-                            <span class="badge {{ $isKipk ? 'bg-success' : 'bg-secondary' }}">
-                                {{ $isKipk ? 'Penerima KIPK' : 'Bukan Penerima KIPK' }}
+                            <h6 class="mb-0">Status Beasiswa</h6>
+                            <span>
+                                @forelse ($lembagaBeasiswa as $lembaga)
+                                    <span class="badge bg-success">{{ $lembaga }}</span>
+                                @empty
+                                    <span class="badge bg-secondary">Bukan Penerima Beasiswa</span>
+                                @endforelse
                             </span>
                         </li>
                     </ul>
@@ -109,10 +113,14 @@
                                         <td>: {{ $mahasiswa['nidn_pa'] }}</td>
                                     </tr>
                                     <tr>
-                                        <td class="fw-bold">Status KIPK</td>
-                                        <td>: <span class="badge {{ $isKipk ? 'bg-success' : 'bg-secondary' }}">
-                                                {{ $isKipk ? 'Penerima KIPK' : 'Bukan Penerima KIPK' }}
-                                            </span></td>
+                                        <td class="fw-bold">Status Beasiswa</td>
+                                        <td>:
+                                            @forelse ($lembagaBeasiswa as $lembaga)
+                                                <span class="badge bg-success">{{ $lembaga }}</span>
+                                            @empty
+                                                <span class="badge bg-secondary">Bukan Penerima Beasiswa</span>
+                                            @endforelse
+                                        </td>
                                     </tr>
                                 </table>
                             </div>
@@ -120,7 +128,7 @@
                     </div>
                 </div>
 
-                @if ($isKipk && count($riwayatBeasiswa) > 0)
+                @if ($isPenerimaBeasiswa && count($riwayatBeasiswa) > 0)
                     <div class="card">
                         <div class="card-header">
                             <h6 class="mb-0"><i class="bx bx-money me-1"></i>Riwayat Penerima Beasiswa</h6>
@@ -131,7 +139,8 @@
                                     <thead>
                                         <tr>
                                             <th>No</th>
-                                            <th>Lembaga Beasiswa</th>
+                                            <th>Nama Beasiswa</th>
+                                            <th>Lembaga</th>
                                             <th>Tahun Akademik</th>
                                         </tr>
                                     </thead>
@@ -139,6 +148,7 @@
                                         @foreach ($riwayatBeasiswa as $index => $riwayat)
                                             <tr>
                                                 <td>{{ $index + 1 }}</td>
+                                                <td>{{ $riwayat['beasiswa'] }}</td>
                                                 <td>{{ $riwayat['lembaga'] }}</td>
                                                 <td>
                                                     @foreach ($riwayat['tahun_akademik'] as $ta)
@@ -152,11 +162,11 @@
                             </div>
                         </div>
                     </div>
-                @elseif (!$isKipk)
+                @elseif (!$isPenerimaBeasiswa)
                     <div class="card">
                         <div class="card-body text-center py-4">
                             <i class="bx bx-info-circle" style="font-size: 36px; color: #6c757d;"></i>
-                            <p class="text-muted mt-2 mb-0">Mahasiswa ini bukan penerima KIPK / beasiswa</p>
+                            <p class="text-muted mt-2 mb-0">Mahasiswa ini bukan penerima beasiswa</p>
                         </div>
                     </div>
                 @endif

@@ -51,15 +51,25 @@ class MahasiswaController extends Controller
                 $query->where('m.program_kuliah_id', $request->kelas);
             }
 
-            // KIPK lookup
-            $penerimaBeasiswa = PenerimaBeasiswa::all()->groupBy('npm')->map(function ($items) {
-                $tahun = $items->pluck('tahun_akademik')
-                    ->map(fn($t) => json_decode($t, true))
-                    ->flatten()
-                    ->unique()
-                    ->sort()
-                    ->toArray();
-                return $tahun;
+            // Lookup penerima beasiswa (semua lembaga)
+            // Label: "Nama Beasiswa (Nama Lembaga)"
+            $masterLembaga = LembagaBeasiswa::all()->mapWithKeys(fn($l) => [
+                $l->id => $l->nama_beasiswa . ' (' . $l->nama_lembaga . ')',
+            ]);
+            $penerimaBeasiswa = PenerimaBeasiswa::all()->groupBy('npm')->map(function ($items) use ($masterLembaga) {
+                return [
+                    'lembaga' => $items->pluck('id_lembaga')
+                        ->map(fn($id) => $masterLembaga[$id] ?? '-')
+                        ->unique()
+                        ->values()
+                        ->toArray(),
+                    'tahun' => $items->pluck('tahun_akademik')
+                        ->map(fn($t) => json_decode($t, true))
+                        ->flatten()
+                        ->unique()
+                        ->sort()
+                        ->toArray(),
+                ];
             });
 
             return DataTables::eloquent($query)
@@ -67,9 +77,11 @@ class MahasiswaController extends Controller
                 ->addColumn('nama_mahasiswa', function ($row) use ($penerimaBeasiswa) {
                     $nama = e($row->nama_mahasiswa);
                     if (isset($penerimaBeasiswa[$row->npm])) {
-                        $tahunList = $penerimaBeasiswa[$row->npm];
-                        $tahunStr = implode(', ', $tahunList);
-                        $nama .= ' <span class="badge bg-success" style="font-size:10px;">KIPK</span>';
+                        $beasiswa = $penerimaBeasiswa[$row->npm];
+                        $tahunStr = implode(', ', $beasiswa['tahun']);
+                        foreach ($beasiswa['lembaga'] as $lembaga) {
+                            $nama .= ' <span class="badge bg-success" style="font-size:10px;">' . e($lembaga) . '</span>';
+                        }
                         $nama .= '<br><small class="text-muted">' . $tahunStr . '</small>';
                     }
                     return $nama;
@@ -140,14 +152,22 @@ class MahasiswaController extends Controller
             ];
         })->first();
 
-        // KIPK / Beasiswa
-        $masterLembaga = LembagaBeasiswa::pluck('nama_lembaga', 'id');
+        // Status beasiswa (semua lembaga)
+        $masterBeasiswa = LembagaBeasiswa::all()->keyBy('id');
+        // Label: "Nama Beasiswa (Nama Lembaga)"
+        $masterLembaga = $masterBeasiswa->map(fn($l) => $l->nama_beasiswa . ' (' . $l->nama_lembaga . ')');
         $penerima = PenerimaBeasiswa::where('npm', $mahasiswa['npm'])->get();
-        $isKipk = $penerima->isNotEmpty();
-        $riwayatBeasiswa = $penerima->map(function ($item) use ($masterLembaga) {
+        $isPenerimaBeasiswa = $penerima->isNotEmpty();
+        $lembagaBeasiswa = $penerima->pluck('id_lembaga')
+            ->map(fn($idLembaga) => $masterLembaga[$idLembaga] ?? '-')
+            ->unique()
+            ->values()
+            ->toArray();
+        $riwayatBeasiswa = $penerima->map(function ($item) use ($masterBeasiswa) {
             $tahunArray = json_decode($item->tahun_akademik, true);
             return [
-                'lembaga'       => $masterLembaga[$item->id_lembaga] ?? '-',
+                'beasiswa'      => $masterBeasiswa[$item->id_lembaga]->nama_beasiswa ?? '-',
+                'lembaga'       => $masterBeasiswa[$item->id_lembaga]->nama_lembaga ?? '-',
                 'tahun_akademik'=> is_array($tahunArray) ? $tahunArray : [],
             ];
         })->toArray();
@@ -159,7 +179,8 @@ class MahasiswaController extends Controller
         $d['akm'] = Akm::where('npm', $mahasiswa['npm'])->get()->keyBy('kode_tahun_akademik');
         $d['mahasiswa'] = $mahasiswa;
         $d['page'] = $page;
-        $d['isKipk'] = $isKipk;
+        $d['isPenerimaBeasiswa'] = $isPenerimaBeasiswa;
+        $d['lembagaBeasiswa'] = $lembagaBeasiswa;
         $d['riwayatBeasiswa'] = $riwayatBeasiswa;
 
         if ($page == 'khs') {
