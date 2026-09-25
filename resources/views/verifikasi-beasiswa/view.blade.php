@@ -78,7 +78,7 @@
                             <th>Program Studi</th>
                             <th>Beasiswa</th>
                             <th>Tanggungan</th>
-                            <th>Diverifikasi Oleh</th>
+                            <th>Petugas</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -109,8 +109,13 @@
                                 </td>
                                 <td class="info-verifikator">
                                     @if ($item->diverifikasi_oleh)
+                                        <small class="text-success">Diverifikasi oleh</small><br>
                                         {{ $item->diverifikasi_oleh }}
                                         <br><small class="text-muted">{{ $item->diverifikasi_pada?->format('d/m/Y H:i') }}</small>
+                                    @elseif ($item->dibatalkan_oleh)
+                                        <small class="text-danger">Dibatalkan oleh</small><br>
+                                        {{ $item->dibatalkan_oleh }}
+                                        <br><small class="text-muted">{{ $item->dibatalkan_pada?->format('d/m/Y H:i') }}</small>
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif
@@ -186,8 +191,11 @@
                     data: { semester, items, terverifikasi: status ? 1 : 0 },
                 }).done(function(res) {
                     $checkbox.prop('checked', status);
+                    const label = res.status
+                        ? '<small class="text-success">Diverifikasi oleh</small>'
+                        : '<small class="text-danger">Dibatalkan oleh</small>';
                     $checkbox.closest('tr').find('.info-verifikator')
-                        .html(`${res.verifikator}<br><small class="text-muted">${res.waktu}</small>`);
+                        .html(`${label}<br>${$('<div>').text(res.petugas).html()}<br><small class="text-muted">${res.waktu}</small>`);
                     notif('success', '✓ ' + res.message);
                 }).fail(function(xhr) {
                     $checkbox.prop('checked', !status);

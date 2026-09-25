@@ -46,7 +46,7 @@ class VerifikasiBeasiswaController extends Controller
             ->get()
             ->keyBy('npm');
 
-        $verifikasi = VerifikasiBeasiswa::with('verifikator')
+        $verifikasi = VerifikasiBeasiswa::with(['verifikator', 'pembatal'])
             ->where('kode_tahun_akademik', $semester)
             ->whereIn('npm', $penerima->pluck('npm')->unique())
             ->get()
@@ -67,8 +67,10 @@ class VerifikasiBeasiswaController extends Controller
                 'jenis_tanggungan' => $l->jenis_tanggungan ?? '-',
                 'jumlah_jaminan' => $item->jumlah_jaminan,
                 'terverifikasi' => (bool) ($v->terverifikasi ?? false),
-                'diverifikasi_oleh' => $v->verifikator->name ?? null,
-                'diverifikasi_pada' => $v->diverifikasi_pada ?? null,
+                'diverifikasi_oleh' => $v?->terverifikasi ? ($v->verifikator->name ?? null) : null,
+                'diverifikasi_pada' => $v?->terverifikasi ? $v->diverifikasi_pada : null,
+                'dibatalkan_oleh' => $v && !$v->terverifikasi ? ($v->pembatal->name ?? null) : null,
+                'dibatalkan_pada' => $v && !$v->terverifikasi ? $v->dibatalkan_pada : null,
             ];
         });
 
@@ -118,8 +120,11 @@ class VerifikasiBeasiswaController extends Controller
                         ['npm' => $npm, 'id_lembaga' => $idLembaga, 'kode_tahun_akademik' => $semester],
                         [
                             'terverifikasi' => $status,
-                            'diverifikasi_oleh' => $userId,
-                            'diverifikasi_pada' => now(),
+                            // Verifikasi: isi verifikator, kosongkan pembatal (dan sebaliknya)
+                            'diverifikasi_oleh' => $status ? $userId : null,
+                            'diverifikasi_pada' => $status ? now() : null,
+                            'dibatalkan_oleh' => $status ? null : $userId,
+                            'dibatalkan_pada' => $status ? null : now(),
                         ]
                     );
                     $jumlah++;
@@ -138,7 +143,8 @@ class VerifikasiBeasiswaController extends Controller
             'message' => $status
                 ? "{$jumlah} data berhasil diverifikasi"
                 : "Verifikasi {$jumlah} data berhasil dibatalkan",
-            'verifikator' => auth()->user()->name,
+            'status' => $status,
+            'petugas' => auth()->user()->name,
             'waktu' => now()->format('d/m/Y H:i'),
         ]);
     }

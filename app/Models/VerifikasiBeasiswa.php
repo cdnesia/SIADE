@@ -15,15 +15,23 @@ class VerifikasiBeasiswa extends Model
         'terverifikasi',
         'diverifikasi_oleh',
         'diverifikasi_pada',
+        'dibatalkan_oleh',
+        'dibatalkan_pada',
     ];
 
     protected $casts = [
         'terverifikasi' => 'boolean',
         'diverifikasi_pada' => 'datetime',
+        'dibatalkan_pada' => 'datetime',
     ];
 
     public function verifikator()
     {
         return $this->belongsTo(User::class, 'diverifikasi_oleh');
+    }
+
+    public function pembatal()
+    {
+        return $this->belongsTo(User::class, 'dibatalkan_oleh');
     }
 }
