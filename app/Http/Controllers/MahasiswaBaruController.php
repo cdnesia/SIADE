@@ -33,7 +33,6 @@ class MahasiswaBaruController extends Controller
 
         $belum_ada_nim_array = $belum_ada_nim->pluck('pmb')->unique()->values()->toArray();
 
-        dd($belum_ada_nim_array);
 
         $result = $this->api->post(
             'public/api/tagihan/cek',
@@ -66,7 +65,6 @@ class MahasiswaBaruController extends Controller
             }
         }
 
-        dd($dataLolos);
 
         $prodis = DB::connection('penmaru_old')
             ->table('master_sub_unit_kerja as msuk')
