@@ -188,7 +188,9 @@
                     url: urlSimpan,
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': csrf },
-                    data: { semester, items, terverifikasi: status ? 1 : 0 },
+                    // Kirim sebagai JSON agar ribuan item tidak terpotong oleh batas max_input_vars PHP
+                    contentType: 'application/json',
+                    data: JSON.stringify({ semester, items, terverifikasi: status ? 1 : 0 }),
                 }).done(function(res) {
                     $checkbox.prop('checked', status);
                     const label = res.status

@@ -100,35 +100,52 @@ class VerifikasiBeasiswaController extends Controller
         $semester = $request->semester;
         $status = (bool) $request->terverifikasi;
         $userId = auth()->id();
+        $sekarang = now();
         $jumlah = 0;
 
+        // Pecah "npm|id_lembaga" sekali di awal (duplikat dibuang)
+        $items = collect($request->items)->unique()->map(function ($item) {
+            [$npm, $idLembaga] = array_pad(explode('|', $item, 2), 2, null);
+            return ['npm' => $npm, 'id_lembaga' => $idLembaga];
+        });
+
         try {
-            DB::transaction(function () use ($request, $semester, $status, $userId, &$jumlah) {
-                foreach ($request->items as $item) {
-                    [$npm, $idLembaga] = array_pad(explode('|', $item, 2), 2, null);
+            DB::transaction(function () use ($items, $semester, $status, $userId, $sekarang, &$jumlah) {
+                // Hanya boleh verifikasi jika semester memang terdaftar di data penerima.
+                // Dicek dalam satu query (bukan per baris) agar verifikasi massal tetap cepat.
+                $terdaftar = PenerimaBeasiswa::query()
+                    ->select('npm', 'id_lembaga')
+                    ->whereIn('npm', $items->pluck('npm')->unique()->values())
+                    ->whereJsonContains('tahun_akademik', (string) $semester)
+                    ->get()
+                    ->map(fn($p) => $p->npm . '|' . $p->id_lembaga)
+                    ->flip();
 
-                    // Hanya boleh verifikasi jika semester memang terdaftar di data penerima
-                    $terdaftar = PenerimaBeasiswa::where('npm', $npm)
-                        ->where('id_lembaga', $idLembaga)
-                        ->whereJsonContains('tahun_akademik', (string) $semester)
-                        ->exists();
-                    if (!$terdaftar) {
-                        continue;
-                    }
+                $baris = $items
+                    ->filter(fn($i) => isset($terdaftar[$i['npm'] . '|' . $i['id_lembaga']]))
+                    ->map(fn($i) => [
+                        'npm' => $i['npm'],
+                        'id_lembaga' => $i['id_lembaga'],
+                        'kode_tahun_akademik' => $semester,
+                        'terverifikasi' => $status,
+                        // Verifikasi: isi verifikator, kosongkan pembatal (dan sebaliknya)
+                        'diverifikasi_oleh' => $status ? $userId : null,
+                        'diverifikasi_pada' => $status ? $sekarang : null,
+                        'dibatalkan_oleh' => $status ? null : $userId,
+                        'dibatalkan_pada' => $status ? null : $sekarang,
+                    ])
+                    ->values();
 
-                    VerifikasiBeasiswa::updateOrCreate(
-                        ['npm' => $npm, 'id_lembaga' => $idLembaga, 'kode_tahun_akademik' => $semester],
-                        [
-                            'terverifikasi' => $status,
-                            // Verifikasi: isi verifikator, kosongkan pembatal (dan sebaliknya)
-                            'diverifikasi_oleh' => $status ? $userId : null,
-                            'diverifikasi_pada' => $status ? now() : null,
-                            'dibatalkan_oleh' => $status ? null : $userId,
-                            'dibatalkan_pada' => $status ? null : now(),
-                        ]
+                // Upsert per 500 baris memakai unique key (npm, id_lembaga, kode_tahun_akademik)
+                foreach ($baris->chunk(500) as $potongan) {
+                    VerifikasiBeasiswa::upsert(
+                        $potongan->all(),
+                        ['npm', 'id_lembaga', 'kode_tahun_akademik'],
+                        ['terverifikasi', 'diverifikasi_oleh', 'diverifikasi_pada', 'dibatalkan_oleh', 'dibatalkan_pada', 'updated_at']
                     );
-                    $jumlah++;
                 }
+
+                $jumlah = $baris->count();
             });
         } catch (\Throwable $e) {
             report($e);

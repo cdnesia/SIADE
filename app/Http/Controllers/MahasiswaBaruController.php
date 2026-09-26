@@ -33,8 +33,10 @@ class MahasiswaBaruController extends Controller
 
         $belum_ada_nim_array = $belum_ada_nim->pluck('pmb')->unique()->values()->toArray();
 
+        dd($belum_ada_nim_array);
+
         $result = $this->api->post(
-            'api/tagihan/cek',
+            'public/api/tagihan/cek',
             [
                 "npm"             => $belum_ada_nim_array,
                 "tahunAkademik"   => $gelombang_pendaftaran,
@@ -45,14 +47,12 @@ class MahasiswaBaruController extends Controller
 
         if ($result['data']['success'] ?? false) {
             $tagihanByNpm = collect($result['data']['data'] ?? [])->groupBy('npm');
-
             foreach ($tagihanByNpm as $npm => $tagihanList) {
-
                 foreach ($tagihanList as $tagihan) {
                     $total = (float) ($tagihan['total_tagihan'] ?? 0);
                     $terbayar = (float) ($tagihan['nominal_terbayar'] ?? 0);
 
-                    if ($terbayar <= ($total * 0.5)) {
+                    if ($terbayar <= ($total * 0.6)) {
                         continue;
                     }
 
@@ -65,6 +65,8 @@ class MahasiswaBaruController extends Controller
                 }
             }
         }
+
+        dd($dataLolos);
 
         $prodis = DB::connection('penmaru_old')
             ->table('master_sub_unit_kerja as msuk')
