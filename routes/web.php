@@ -96,6 +96,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
 
     Route::prefix('mahasiswa-baru')->name('mahasiswa-baru.')->group(function () {
         Route::get('/', [MahasiswaBaruController::class, 'index'])->name('index');
+        Route::get('/export', [MahasiswaBaruController::class, 'export'])->name('export');
     });
 
     Route::prefix('kaprodi')->name('kaprodi.')->group(function () {

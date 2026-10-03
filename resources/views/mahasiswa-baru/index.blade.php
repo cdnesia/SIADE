@@ -2,8 +2,11 @@
 @section('content')
     <div class="d-flex align-items-center mb-3">
         <h5 class="mb-0"><i class="bx bx-user-plus me-2"></i>Data Mahasiswa Baru</h5>
-        <span class="ms-auto">
+        <span class="ms-auto d-flex align-items-center gap-2">
             <small class="text-muted">Tahun Filter: <strong>{{ $tahun_filter }}</strong></small>
+            <a href="{{ route('mahasiswa-baru.export') }}" class="btn btn-sm btn-success">
+                <i class="bx bx-download me-1"></i>Export Excel
+            </a>
         </span>
     </div>
 

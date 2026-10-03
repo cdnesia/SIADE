@@ -2,19 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\MahasiswaBaruExport;
 use App\Services\ApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MahasiswaBaruController extends Controller
 {
+    protected const TAHUN_FILTER = 'UMJA2026';
+
+    protected const EXCLUDE = ['UMJA202610014', 'UMJA202610013', 'UMJA202610006'];
+
     public function __construct(protected ApiService $api) {}
     public function index()
     {
 
-        $tahun_filter = 'UMJA2026';
+        $tahun_filter = self::TAHUN_FILTER;
 
-        $exclude = ['UMJA202610014', 'UMJA202610013', 'UMJA202610006'];
+        $exclude = self::EXCLUDE;
 
         $pmb_prodi = DB::connection('penmaru_old')
             ->table('pmb_prodi')
@@ -149,5 +155,52 @@ class MahasiswaBaruController extends Controller
         $d['tahun_filter'] = $tahun_filter;
 
         return view('mahasiswa-baru.index', $d);
+    }
+
+    public function export()
+    {
+        // Hanya membaca data yang sudah ber-NIM, tanpa menjalankan proses penerbitan NIM di index()
+        $mahasiswa = DB::connection('penmaru_old')
+            ->table('pmb_prodi')
+            ->where('na', 'N')
+            ->whereRaw('LEFT(pmb_gelombang, 8) = ?', [self::TAHUN_FILTER])
+            ->whereNotNull('nim')
+            ->where('nim', '!=', '')
+            ->whereNotIn('pmb', self::EXCLUDE)
+            ->get()
+            ->unique('pmb');
+
+        $prodis = DB::connection('penmaru_old')
+            ->table('master_sub_unit_kerja as msuk')
+            ->select('kode', 'jenjang', 'msuk.nama')
+            ->join('master_pendidikan as mp', 'mp.id', 'msuk.id_pendidikan')
+            ->where('kode', '!=', '')
+            ->get()->keyBy('kode');
+
+        $rows = $mahasiswa
+            ->map(function ($mhs) use ($prodis) {
+                $prodi = $prodis[$mhs->prodi] ?? null;
+                return [
+                    'nama_prodi' => $prodi->nama ?? 'Prodi ' . $mhs->prodi,
+                    'jenjang'    => $prodi->jenjang ?? '-',
+                    'mhs'        => $mhs,
+                ];
+            })
+            ->sortBy([['nama_prodi', 'asc'], ['mhs.nim', 'asc']])
+            ->values()
+            ->map(fn($row, $i) => [
+                $i + 1,
+                $row['mhs']->nim,
+                $row['mhs']->pmb,
+                $row['mhs']->nama_daftar,
+                $row['jenjang'],
+                $row['nama_prodi'],
+                $row['mhs']->pmb_gelombang,
+            ])
+            ->toArray();
+
+        $filename = 'mahasiswa-baru-' . self::TAHUN_FILTER . '-' . now()->format('Ymd-His') . '.xlsx';
+
+        return Excel::download(new MahasiswaBaruExport($rows), $filename);
     }
 }
