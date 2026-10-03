@@ -21,7 +21,7 @@ class MahasiswaBaruExport implements FromArray, WithHeadings, ShouldAutoSize, Wi
 
     public function headings(): array
     {
-        return ['No', 'NIM', 'No. Pendaftaran', 'Nama', 'Jenjang', 'Program Studi', 'Gelombang'];
+        return ['No', 'NIM', 'No. Pendaftaran', 'Nama', 'Jenjang', 'Program Studi', 'Kelas', 'Gelombang'];
     }
 
     public function columnFormats(): array

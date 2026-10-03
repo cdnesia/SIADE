@@ -129,6 +129,7 @@ class MahasiswaBaruController extends Controller
                 'nomor'   => $nomor,
                 'prodi'   => $prodi,
                 'nama'    => $nama,
+                'kelas'   => $pendaftar->nama_kelas ?: '-',
                 'nim'     => $nim_baru,
                 'nim_num' => $nim_num_baru,
             ];
@@ -143,6 +144,7 @@ class MahasiswaBaruController extends Controller
                     'nama_prodi' => $nama_prodi,
                     'kode_prodi' => $prodi,
                     'jumlah'     => $items->count(),
+                    'per_kelas'  => $items->countBy(fn($item) => $item->nama_kelas ?: '-')->sortKeys(),
                     'data'       => $items->sortBy('nim')->values(),
                 ];
             })
@@ -183,6 +185,7 @@ class MahasiswaBaruController extends Controller
                 return [
                     'nama_prodi' => $prodi->nama ?? 'Prodi ' . $mhs->prodi,
                     'jenjang'    => $prodi->jenjang ?? '-',
+                    'kelas'      => $mhs->nama_kelas ?: '-',
                     'mhs'        => $mhs,
                 ];
             })
@@ -195,6 +198,7 @@ class MahasiswaBaruController extends Controller
                 $row['mhs']->nama_daftar,
                 $row['jenjang'],
                 $row['nama_prodi'],
+                $row['kelas'],
                 $row['mhs']->pmb_gelombang,
             ])
             ->toArray();

@@ -72,6 +72,7 @@
                             <th>No</th>
                             <th>Program Studi</th>
                             <th class="text-center">Jumlah Mahasiswa</th>
+                            <th>Kelas</th>
                             <th class="text-center">Aksi</th>
                         </tr>
                     </thead>
@@ -82,6 +83,11 @@
                                 <td>{{ $prodi['nama_prodi'] }}</td>
                                 <td class="text-center">
                                     <span class="badge bg-primary">{{ $prodi['jumlah'] }}</span>
+                                </td>
+                                <td>
+                                    @foreach ($prodi['per_kelas'] as $kelas => $jumlah)
+                                        <span class="badge bg-light text-dark border me-1">{{ $kelas }}: {{ $jumlah }}</span>
+                                    @endforeach
                                 </td>
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-outline-info btn-lihat-mhs"
@@ -94,7 +100,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="text-center text-muted">Belum ada data mahasiswa baru</td>
+                                <td colspan="5" class="text-center text-muted">Belum ada data mahasiswa baru</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -120,6 +126,7 @@
                                 <th>No</th>
                                 <th>NIM Baru</th>
                                 <th>Nama Mahasiswa</th>
+                                <th>Kelas</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -130,6 +137,7 @@
                                         <span class="fw-bold text-success">{{ $mhs['nim'] }}</span>
                                     </td>
                                     <td>{{ $mhs['nama'] }}</td>
+                                    <td>{{ $mhs['kelas'] }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -156,11 +164,12 @@
                                     <th>NPM Pendaftar</th>
                                     <th>Nama</th>
                                     <th>NIM</th>
+                                    <th>Kelas</th>
                                 </tr>
                             </thead>
                             <tbody id="tbodyDetailMhs">
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted">Loading...</td>
+                                    <td colspan="5" class="text-center text-muted">Loading...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -197,11 +206,12 @@
                         '<td>' + (mhs.pmb || '-') + '</td>' +
                         '<td>' + (mhs.nama_daftar || '-') + '</td>' +
                         '<td>' + (mhs.nim || '<em class="text-muted">Belum NIM</em>') + '</td>' +
+                        '<td>' + (mhs.nama_kelas || '-') + '</td>' +
                         '</tr>'
                     );
                 });
             } else {
-                tbody.append('<tr><td colspan="4" class="text-center text-muted">Tidak ada data</td></tr>');
+                tbody.append('<tr><td colspan="5" class="text-center text-muted">Tidak ada data</td></tr>');
             }
         });
     </script>
