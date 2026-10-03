@@ -134,7 +134,7 @@ class MasterApiService
 
     public function cetakKhs(string $npm, string $periode)
     {
-        return $this->api->postFile('public/api/print/khs/by-npm', [
+        return $this->api->postFile('public/api/print/khs', [
             "npm" => $npm,
             "tahunAkademik" => $periode
         ]);
@@ -142,7 +142,7 @@ class MasterApiService
 
     public function cetakKrs(string $npm, string $periode)
     {
-        return $this->api->postFile('public/api/print/krs/by-npm', [
+        return $this->api->postFile('public/api/print/krs', [
             "npm" => $npm,
             "tahunAkademik" => $periode
         ]);
