@@ -57,7 +57,7 @@ class MahasiswaBaruController extends Controller
                     $total = (float) ($tagihan['total_tagihan'] ?? 0);
                     $terbayar = (float) ($tagihan['nominal_terbayar'] ?? 0);
 
-                    if ($terbayar <= ($total * 0.6)) {
+                    if ($terbayar < ($total * 0.6)) {
                         continue;
                     }
 
@@ -70,7 +70,6 @@ class MahasiswaBaruController extends Controller
                 }
             }
         }
-
 
         $prodis = DB::connection('penmaru_old')
             ->table('master_sub_unit_kerja as msuk')
