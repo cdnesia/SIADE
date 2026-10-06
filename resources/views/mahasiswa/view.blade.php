@@ -11,7 +11,7 @@
         </div>
         <div class="card-body">
             <div class="row mb-3 g-2 align-items-end">
-                <div class="col-sm-6 col-md-4">
+                <div class="col-sm-6 col-md-3">
                     <label for="filterProdi" class="form-label small mb-1">Program Studi</label>
                     <select id="filterProdi" class="form-select select2" data-placeholder="-- Semua Program Studi --">
                         <option value="">Semua Program Studi</option>
@@ -20,7 +20,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-sm-6 col-md-4">
+                <div class="col-sm-6 col-md-2">
                     <label for="filterKelas" class="form-label small mb-1">Kelas Perkuliahan</label>
                     <select id="filterKelas" class="form-select select2" data-placeholder="-- Semua Kelas --">
                         <option value="">Semua Kelas Perkuliahan</option>
@@ -29,7 +29,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-sm-6 col-md-3">
+                <div class="col-sm-6 col-md-2">
                     <label for="filterTahun" class="form-label small mb-1">Tahun Masuk</label>
                     <select id="filterTahun" class="form-select select2" data-placeholder="-- Semua Tahun --">
                         <option value="">Semua Tahun Masuk</option>
@@ -38,7 +38,20 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-sm-6 col-md-1">
+                <div class="col-sm-6 col-md-4">
+                    <label for="filterPa" class="form-label small mb-1">Dosen PA</label>
+                    <select id="filterPa" class="form-select select2" data-placeholder="-- Semua Dosen PA --">
+                        <option value="">Semua Dosen PA</option>
+                        <option value="kosong">Belum ada PA ({{ $paKosong }})</option>
+                        @if ($paTidakDikenal)
+                            <option value="tidak-dikenal">PA tidak ditemukan di data dosen ({{ $paTidakDikenal }})</option>
+                        @endif
+                        @foreach ($pa as $d)
+                            <option value="{{ $d['id'] }}">{{ $d['nama_lengkap'] }} ({{ $d['jumlah'] }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-sm-12 col-md-1">
                     <button id="btnResetFilter" class="btn btn-warning w-100" title="Reset Filter">
                         <i class="bx bx-reset"></i>
                     </button>
@@ -54,6 +67,7 @@
                             <th>Program Studi</th>
                             <th>Kelas Perkuliahan</th>
                             <th>Tahun Masuk</th>
+                            <th>Dosen PA</th>
                             <th class="text-center" style="width: 100px">Aksi</th>
                         </tr>
                     </thead>
@@ -81,6 +95,7 @@
                         d.prodi = $('#filterProdi').val();
                         d.kelas = $('#filterKelas').val();
                         d.tahun = $('#filterTahun').val();
+                        d.pa = $('#filterPa').val();
                     }
                 },
                 language: {
@@ -113,6 +128,12 @@
                         name: 'm.tahun_angkatan'
                     },
                     {
+                        data: 'nama_pa',
+                        name: 'nama_pa',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
                         data: 'aksi',
                         name: 'aksi',
                         orderable: false,
@@ -122,7 +143,7 @@
                 ]
             });
 
-            $('#filterProdi, #filterKelas, #filterTahun').on('change', function() {
+            $('#filterProdi, #filterKelas, #filterTahun, #filterPa').on('change', function() {
                 table.ajax.reload();
             });
 
@@ -130,6 +151,7 @@
                 $('#filterProdi').val('').trigger('change');
                 $('#filterKelas').val('').trigger('change');
                 $('#filterTahun').val('').trigger('change');
+                $('#filterPa').val('').trigger('change');
             });
         });
     </script>

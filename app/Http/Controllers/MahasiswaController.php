@@ -16,6 +16,7 @@ use App\Models\SkalaNilai;
 use App\Services\MasterApiService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
@@ -27,8 +28,35 @@ class MahasiswaController extends Controller
     {
         view()->share('modul', $this->modul);
     }
-    public function index(Request $request)
+    /**
+     * Daftar dosen dari API pegawai (id => [nama, nidn]), di-cache 10 menit agar
+     * tabel mahasiswa (server-side) tidak memanggil API di setiap request.
+     */
+    private function daftarDosen(MasterApiService $api)
     {
+        $dosen = Cache::get('referensi_dosen_pa');
+        if ($dosen) {
+            return $dosen;
+        }
+
+        $dosen = collect($api->dataDosen()['data']['data'] ?? [])
+            ->mapWithKeys(fn($item) => [$item['id'] => [
+                'nama_lengkap' => $item['namaLengkap'] ?? '-',
+                'nidn' => $item['nidn'] ?? $item['nik'] ?? '-',
+            ]]);
+
+        // Hanya simpan ke cache jika API berhasil, supaya kegagalan sesaat tidak ikut tersimpan
+        if ($dosen->isNotEmpty()) {
+            Cache::put('referensi_dosen_pa', $dosen, now()->addMinutes(10));
+        }
+
+        return $dosen;
+    }
+
+    public function index(Request $request, MasterApiService $api)
+    {
+        $dosen = $this->daftarDosen($api);
+
         if ($request->ajax()) {
             $query = Mahasiswa::from('master_mahasiswa as m')
                 ->leftJoin('master_program_studi as p', 'm.kode_program_studi', '=', 'p.kode_program_studi')
@@ -49,6 +77,14 @@ class MahasiswaController extends Controller
 
             if ($request->kelas) {
                 $query->where('m.program_kuliah_id', $request->kelas);
+            }
+
+            if ($request->pa === 'kosong') {
+                $query->where(fn($q) => $q->whereNull('m.pa_id')->orWhere('m.pa_id', 0));
+            } elseif ($request->pa === 'tidak-dikenal') {
+                $query->where('m.pa_id', '>', 0)->whereNotIn('m.pa_id', $dosen->keys());
+            } elseif ($request->pa) {
+                $query->where('m.pa_id', $request->pa);
             }
 
             // Lookup penerima beasiswa (semua lembaga)
@@ -86,6 +122,15 @@ class MahasiswaController extends Controller
                     }
                     return $nama;
                 })
+                ->addColumn('nama_pa', function ($row) use ($dosen) {
+                    if (!$row->pa_id) {
+                        return '<span class="badge bg-warning-subtle text-warning-emphasis">Belum ada PA</span>';
+                    }
+                    if (!isset($dosen[$row->pa_id])) {
+                        return '<span class="badge bg-secondary-subtle text-secondary-emphasis" title="ID dosen ' . e($row->pa_id) . ' tidak ditemukan di data dosen">Tidak ditemukan</span>';
+                    }
+                    return e($dosen[$row->pa_id]['nama_lengkap']);
+                })
                 ->addColumn('aksi', function ($row) {
                     $btn = '';
                     // if (auth('web')->user()->can($this->modul . '.edit')) {
@@ -101,15 +146,60 @@ class MahasiswaController extends Controller
                     $btn .= '<a href="' . route($this->modul . '.show', Crypt::encrypt($row->id)) . '" class="btn btn-sm btn-info me-1"><i class="bx bx-search-alt me-0"></i>Detail</a>';
                     return $btn ?: '-';
                 })
-                ->rawColumns(['nama_mahasiswa', 'aksi'])
+                ->rawColumns(['nama_mahasiswa', 'nama_pa', 'aksi'])
                 ->make(true);
         }
         $prodi = Prodi::orderBy('nama_program_studi_idn')->get();
         $kelas = KelasPerkuliahan::orderBy('nama_program_perkuliahan')->get();
         $tahun = Mahasiswa::select('tahun_angkatan')->distinct()->orderBy('tahun_angkatan', 'desc')->pluck('tahun_angkatan');
 
-        return view('mahasiswa.view', compact('prodi', 'kelas', 'tahun'));
+        // Opsi filter PA: hanya dosen yang membimbing minimal satu mahasiswa, beserta jumlahnya
+        $jumlahPerPa = Mahasiswa::selectRaw('pa_id, count(*) as jumlah')->groupBy('pa_id')->pluck('jumlah', 'pa_id');
+        $pa = $dosen->only($jumlahPerPa->keys()->all())
+            ->map(fn($d, $id) => $d + ['id' => $id, 'jumlah' => $jumlahPerPa[$id]])
+            ->sortBy('nama_lengkap')
+            ->values();
+        $paKosong = (int) ($jumlahPerPa[0] ?? 0) + (int) ($jumlahPerPa[''] ?? 0);
+        $paTidakDikenal = $jumlahPerPa->filter(fn($j, $id) => $id && !isset($dosen[$id]))->sum();
+
+        return view('mahasiswa.view', compact('prodi', 'kelas', 'tahun', 'pa', 'paKosong', 'paTidakDikenal'));
     }
+    /**
+     * Ubah dosen pembimbing akademik (PA) mahasiswa.
+     */
+    public function updatePa(Request $request, $id, MasterApiService $api)
+    {
+        try {
+            $mahasiswa = Mahasiswa::findOrFail(Crypt::decrypt($id));
+        } catch (DecryptException $e) {
+            return back()->with('error', 'ID tidak valid.');
+        }
+
+        $idDosen = collect($api->dataDosen()['data']['data'] ?? [])->pluck('id');
+        if ($idDosen->isEmpty()) {
+            return back()->with('error', 'Gagal memuat data. Periksa koneksi Anda.');
+        }
+
+        $validator = validator($request->all(), [
+            'pa_id' => ['required', 'integer', \Illuminate\Validation\Rule::in($idDosen)],
+        ], [
+            'pa_id.required' => 'Dosen PA wajib dipilih.',
+            'pa_id.in' => 'Dosen PA tidak ditemukan.',
+        ]);
+        if ($validator->fails()) {
+            return back()->with('error', '⚠ ' . $validator->errors()->first());
+        }
+
+        try {
+            $mahasiswa->pa_id = $request->pa_id;
+            $mahasiswa->save();
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal memperbarui data. Coba lagi.');
+        }
+
+        return back()->with('success', 'Data berhasil diperbarui');
+    }
+
     public function create() {}
     public function store() {}
     public function show(Request $request, $id, MasterApiService $api)
@@ -178,6 +268,7 @@ class MahasiswaController extends Controller
         $d['krs'] = $api->krs($encryptedNpm);
         $d['akm'] = Akm::where('npm', $mahasiswa['npm'])->get()->keyBy('kode_tahun_akademik');
         $d['mahasiswa'] = $mahasiswa;
+        $d['dosen'] = $masterDosen->sortBy('nama_lengkap')->values();
         $d['page'] = $page;
         $d['isPenerimaBeasiswa'] = $isPenerimaBeasiswa;
         $d['lembagaBeasiswa'] = $lembagaBeasiswa;

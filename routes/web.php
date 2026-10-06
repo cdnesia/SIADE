@@ -21,6 +21,7 @@ use App\Http\Controllers\PenerimaBeasiswaController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\RolesController;
 use App\Http\Controllers\SyncController;
+use App\Http\Controllers\SyncMahasiswaController;
 use App\Http\Controllers\TahunAkademikController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\VerifikasiBeasiswaController;
@@ -34,7 +35,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
 
-    Route::post('mahasiswa/sync', [MahasiswaController::class, 'sync'])->name('mahasiswa.sync');
+    Route::get('mahasiswa/sync', [SyncMahasiswaController::class, 'index'])->name('mahasiswa.sync');
+    Route::post('mahasiswa/sync/import', [SyncMahasiswaController::class, 'import'])->name('mahasiswa.sync.import');
+    Route::put('mahasiswa/sync/{nomor}', [SyncMahasiswaController::class, 'update'])->name('mahasiswa.sync.update');
+    Route::post('mahasiswa/sync/{nomor}/generate-nim', [SyncMahasiswaController::class, 'generateNim'])->name('mahasiswa.sync.generate-nim');
     Route::post('mahasiswa/krs/{npm}/create', [MahasiswaController::class, 'krsCreate'])->name('mahasiswa.krs.create');
     Route::post('mahasiswa/detail/krs/{id}', [MahasiswaController::class, 'krs'])->name('mahasiswa.detail.krs');
     Route::post('mahasiswa/detail/krs/{id}/edit', [MahasiswaController::class, 'krsEdit'])->name('mahasiswa.detail.krs.edit');
@@ -44,6 +48,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::get('mahasiswa/detail/khs/{id}', [MahasiswaController::class, 'khs'])->name('mahasiswa.detail.khs');
     Route::get('mahasiswa/khs/{npm}/{periode}/cetak', [MahasiswaController::class, 'cetakKhs'])->name('mahasiswa.khs.cetak');
     Route::get('mahasiswa/krs/{npm}/{periode}/cetak', [MahasiswaController::class, 'cetakKrs'])->name('mahasiswa.krs.cetak');
+    Route::put('mahasiswa/{id}/pa', [MahasiswaController::class, 'updatePa'])->name('mahasiswa.pa.update');
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('mahasiswa-ptrpl', MahasiswaPTRPLController::class)->only('index');
     Route::get('mahasiswa-ptrpl/import', [MahasiswaPTRPLController::class, 'importForm'])->name('mahasiswa-ptrpl.import');

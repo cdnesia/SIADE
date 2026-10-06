@@ -10,6 +10,7 @@
             'icon' => 'bx bx-user-plus',
             'children' => [
                 ['title' => 'Generate NPM', 'route' => 'mahasiswa-baru.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Sinkron Mahasiswa', 'route' => 'mahasiswa.sync', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
         [
@@ -76,6 +77,27 @@
     ];
 @endphp
 
+@php
+    // Tentukan satu menu aktif: pola route yang cocok dan paling spesifik (terpanjang) yang menang.
+    // "x.index" mencakup semua route "x.*", route lain mencakup dirinya sendiri dan turunannya.
+    $polaMenu = function ($route) {
+        $basis = str_ends_with($route, '.index') ? substr($route, 0, -strlen('.index')) : $route;
+        return [$route => strlen($route) + 1, $basis . '.*' => strlen($basis)];
+    };
+    $routeMenuAktif = null;
+    $skorAktif = -1;
+    foreach ($menus as $m) {
+        foreach (array_merge(isset($m['route']) ? [$m['route']] : [], array_column($m['children'] ?? [], 'route')) as $r) {
+            foreach ($polaMenu($r) as $pola => $skor) {
+                if ($skor > $skorAktif && Route::is($pola)) {
+                    $routeMenuAktif = $r;
+                    $skorAktif = $skor;
+                }
+            }
+        }
+    }
+@endphp
+
 <ul class="metismenu" id="menu">
     @foreach ($menus as $menu)
         @php
@@ -84,25 +106,9 @@
                 ? collect($menu['children'])->filter(fn($child) => auth()->user()->can($child['route']))
                 : collect();
 
-            $parentActive = false;
-            if (isset($menu['route']) && auth()->user()->can($menu['route'])) {
-                $parts = explode('.', $menu['route']);
-                array_pop($parts);
-                $prefix = implode('.', $parts) . '.*';
-                $parentActive = Route::is($prefix);
-            } elseif ($hasChildren && $allowedChildren->isNotEmpty()) {
-                $childPrefixes = $allowedChildren->pluck('route')->map(function ($r) {
-                    $parts = explode('.', $r);
-                    array_pop($parts);
-                    return implode('.', $parts) . '.*';
-                });
-                foreach ($childPrefixes as $prefix) {
-                    if (Route::is($prefix)) {
-                        $parentActive = true;
-                        break;
-                    }
-                }
-            }
+            $parentActive = isset($menu['route'])
+                ? $menu['route'] === $routeMenuAktif
+                : $allowedChildren->contains('route', $routeMenuAktif);
         @endphp
 
         @if (isset($menu['route']) && auth()->user()->can($menu['route']))
@@ -120,13 +126,7 @@
                 </a>
                 <ul>
                     @foreach ($allowedChildren as $child)
-                        @php
-                            $parts = explode('.', $child['route']);
-                            array_pop($parts);
-                            $prefix = implode('.', $parts) . '.*';
-                            $childActive = Route::is($prefix);
-                        @endphp
-                        <li class="{{ $childActive ? 'mm-active' : '' }}">
+                        <li class="{{ $child['route'] === $routeMenuAktif ? 'mm-active' : '' }}">
                             <a href="{{ route($child['route']) }}">
                                 <i class="{{ $child['icon'] }}"></i>{{ $child['title'] }}
                             </a>

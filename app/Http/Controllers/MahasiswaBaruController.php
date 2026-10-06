@@ -10,9 +10,9 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class MahasiswaBaruController extends Controller
 {
-    protected const TAHUN_FILTER = 'UMJA2026';
+    public const TAHUN_FILTER = 'UMJA2026';
 
-    protected const EXCLUDE = ['UMJA202610014', 'UMJA202610013', 'UMJA202610006'];
+    public const EXCLUDE = ['UMJA202610014', 'UMJA202610013', 'UMJA202610006'];
 
     public function __construct(protected ApiService $api) {}
     public function index()

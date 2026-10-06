@@ -106,7 +106,25 @@
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">Dosen PA</td>
-                                        <td>: {{ $mahasiswa['nama_pa'] }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-start gap-2">
+                                                <span>:
+                                                    @if ($mahasiswa['nama_pa'] !== '-')
+                                                        {{ $mahasiswa['nama_pa'] }}
+                                                    @else
+                                                        <span class="badge bg-warning-subtle text-warning-emphasis">Belum ada PA</span>
+                                                    @endif
+                                                </span>
+                                                @can('mahasiswa.pa.update')
+                                                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 ms-auto"
+                                                        data-bs-toggle="modal" data-bs-target="#modalDosenPa"
+                                                        title="{{ $mahasiswa['nama_pa'] !== '-' ? 'Ubah' : 'Pilih' }} dosen PA">
+                                                        <i class="bx bx-edit-alt me-0"></i>
+                                                        {{ $mahasiswa['nama_pa'] !== '-' ? 'Ubah' : 'Pilih' }}
+                                                    </button>
+                                                @endcan
+                                            </div>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">NIDN PA</td>
@@ -127,6 +145,50 @@
                         </div>
                     </div>
                 </div>
+
+                @can('mahasiswa.pa.update')
+                    <div class="modal fade" id="modalDosenPa" tabindex="-1" aria-labelledby="modalDosenPaLabel"
+                        aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <form method="POST" action="{{ route('mahasiswa.pa.update', $mahasiswa['id']) }}"
+                                class="modal-content">
+                                @csrf
+                                @method('PUT')
+                                <div class="modal-header">
+                                    <div>
+                                        <h6 class="modal-title mb-0" id="modalDosenPaLabel">Dosen Pembimbing Akademik</h6>
+                                        <small class="text-muted">{{ $mahasiswa['npm'] }} &middot;
+                                            {{ $mahasiswa['nama_mahasiswa'] }}</small>
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Tutup"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <label class="form-label" for="pilih-dosen-pa">Dosen PA</label>
+                                    <select name="pa_id" id="pilih-dosen-pa" class="form-select" required>
+                                        <option value=""></option>
+                                        @foreach ($dosen as $item)
+                                            <option value="{{ $item['id'] }}"
+                                                {{ $mahasiswa['pa_id'] == $item['id'] ? 'selected' : '' }}>
+                                                {{ $item['nama_lengkap'] }} ({{ $item['nidn'] }})</option>
+                                        @endforeach
+                                    </select>
+                                    @if ($dosen->isEmpty())
+                                        <small class="text-danger">Data dosen gagal dimuat. Muat ulang halaman.</small>
+                                    @else
+                                        <small class="text-muted">Ketik nama atau NIDN untuk mencari.</small>
+                                    @endif
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary btn-sm"><i class="bx bx-save"></i>
+                                        Simpan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endcan
 
                 @if ($isPenerimaBeasiswa && count($riwayatBeasiswa) > 0)
                     <div class="card">
@@ -426,6 +488,14 @@
     <script src="{{ asset('') }}assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
     <script src="{{ asset('') }}assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
     <script>
+        // Pilih dosen PA dengan pencarian; dropdownParent agar select2 bisa diketik di dalam modal
+        $('#pilih-dosen-pa').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: '--Pilih Dosen PA--',
+            dropdownParent: $('#modalDosenPa'),
+        });
+
         $.ajaxSetup({
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
