@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Http\Controllers\MahasiswaBaruController;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 /**
  * Akses data mahasiswa baru (sudah ber-NIM) di database penmaru_old.
@@ -12,6 +14,8 @@ use Illuminate\Support\Facades\DB;
  */
 class PenmaruMahasiswaService
 {
+    const ROLE_MAHASISWA = 6;
+
     private function db()
     {
         return DB::connection('penmaru_old');
@@ -165,6 +169,7 @@ class PenmaruMahasiswaService
     /**
      * Masukkan pendaftar terpilih (berdasarkan nomor pmb) ke master_mahasiswa.
      * Hanya data inti dan biodata teks yang diambil; NIM yang sudah ada di master dilewati.
+     * Setiap mahasiswa sekaligus dibuatkan akun login (username & password = NPM) dan user_id-nya diisi.
      *
      * @return array{ditambah: int, dilewati: array<string>}
      */
@@ -224,8 +229,56 @@ class PenmaruMahasiswaService
             ];
         }
 
-        DB::transaction(fn() => collect($baris)->chunk(100)->each(fn($c) => DB::table('master_mahasiswa')->insert($c->all())));
+        DB::transaction(function () use (&$baris) {
+            $userId = $this->buatAkunMahasiswa($baris);
+            foreach ($baris as &$b) {
+                $b['user_id'] = $userId[$b['npm']];
+            }
+            unset($b);
+
+            collect($baris)->chunk(100)->each(fn($c) => DB::table('master_mahasiswa')->insert($c->all()));
+        });
 
         return ['ditambah' => count($baris), 'dilewati' => $dilewati];
+    }
+
+    /**
+     * Buat akun login untuk mahasiswa baru: username (kolom email) dan password = NPM.
+     * Akun yang username-nya sudah ada dipakai ulang tanpa mengubah password-nya.
+     *
+     * @return array<string, int> user_id di-key berdasarkan NPM
+     */
+    private function buatAkunMahasiswa(array $baris): array
+    {
+        $npm = array_column($baris, 'npm');
+        $sudahAda = DB::table('users')->whereIn('email', $npm)->pluck('id', 'email');
+
+        $akunBaru = [];
+        foreach ($baris as $b) {
+            if (!isset($sudahAda[$b['npm']])) {
+                $akunBaru[] = [
+                    'name' => $b['nama_mahasiswa'],
+                    'email' => $b['npm'],
+                    'password' => Hash::make($b['npm']),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+        }
+        collect($akunBaru)->chunk(100)->each(fn($c) => DB::table('users')->insert($c->all()));
+
+        $userId = DB::table('users')->whereIn('email', $npm)->pluck('id', 'email');
+
+        // Semua akun mahasiswa masuk ke role mahasiswa (id 6), dilewati jika role belum ada
+        $role = Role::find(self::ROLE_MAHASISWA);
+        if ($role) {
+            DB::table('model_has_roles')->insertOrIgnore($userId->map(fn($id) => [
+                'role_id' => $role->id,
+                'model_type' => \App\Models\User::class,
+                'model_id' => $id,
+            ])->values()->all());
+        }
+
+        return $userId->all();
     }
 }
