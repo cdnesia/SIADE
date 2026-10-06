@@ -5,10 +5,11 @@ use App\Http\Controllers\Feeder\BiodataMahasiswaController;
 use App\Http\Controllers\Feeder\CekMahasiswaController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\JadwalDosenController;
-use App\Http\Controllers\Kaprodi\KurikulumController;
 use App\Http\Controllers\KalenderAkademikController;
 use App\Http\Controllers\KegiatanMahasiswaController;
 use App\Http\Controllers\kipk\CekKhsMahasiswa;
+use App\Http\Controllers\KurikulumController;
+use App\Http\Controllers\KurikulumMataKuliahController;
 use App\Http\Controllers\LaporanKKN;
 use App\Http\Controllers\LaporanKKNController;
 use App\Http\Controllers\LaporanPenerimaBeasiswaController;
@@ -99,9 +100,8 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::get('/export', [MahasiswaBaruController::class, 'export'])->name('export');
     });
 
-    Route::prefix('kaprodi')->name('kaprodi.')->group(function () {
-        Route::resource('kurikulum', KurikulumController::class)->except('show');
-    });
+    Route::resource('kurikulum', KurikulumController::class)->except('show');
+    Route::resource('kurikulum.matakuliah', KurikulumMataKuliahController::class)->except('show');
 });
 
 

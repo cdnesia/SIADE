@@ -54,16 +54,9 @@
                 ['title' => 'Tahun Akademik', 'route' => 'tahun-akademik.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Kalender Akademik', 'route' => 'kalender-akademik.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Kegiatan Mahasiswa', 'route' => 'kegiatan-mahasiswa.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Kurikulum', 'route' => 'kurikulum.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
-        [
-            'title' => 'Kaprodi',
-            'icon' => 'bx bx-book-content',
-            'children' => [
-                ['title' => 'Kurikulum', 'route' => 'kaprodi.kurikulum.index', 'icon' => 'bx bx-radio-circle'],
-            ],
-        ],
-
         [
             'title' => 'Laporan',
             'icon' => 'bx bx-file',

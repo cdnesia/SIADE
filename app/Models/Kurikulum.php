@@ -14,4 +14,14 @@ class Kurikulum extends Model
         'status',
         'keterangan',
     ];
+
+    public function mataKuliah()
+    {
+        return $this->hasMany(KurikulumMataKuliah::class, 'kurikulum_id', 'id');
+    }
+
+    public function kurikulumProdi()
+    {
+        return $this->hasMany(KurikulumProdi::class, 'kurikulum_id', 'id');
+    }
 }

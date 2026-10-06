@@ -18,9 +18,11 @@
                             <th>Kode Kurikulum</th>
                             <th>Nama Kurikulum</th>
                             <th>Keterangan</th>
+                            <th class="text-center">Prodi</th>
+                            <th class="text-center">Mata Kuliah</th>
                             <th>Status</th>
-                            @canany([$modul . '.edit', $modul . '.destroy'])
-                                <th width="50px">Aksi</th>
+                            @canany([$modul . '.edit', $modul . '.destroy', $modul . '.matakuliah.index'])
+                                <th width="170px">Aksi</th>
                             @endcanany
                         </tr>
                     </thead>
@@ -31,9 +33,22 @@
                                 <td>{{ $item->kode_kurikulum }}</td>
                                 <td>{{ $item->nama_kurikulum }}</td>
                                 <td>{{ $item->keterangan }}</td>
-                                <td>{{ $item->status == 'A' ? 'Aktif' : 'Tidak Aktif' }}</td>
-                                @canany([$modul . '.edit', $modul . '.destroy'])
-                                    <td>
+                                <td class="text-center">{{ $item->kurikulum_prodi_count }}</td>
+                                <td class="text-center">{{ $item->mata_kuliah_count }}</td>
+                                <td>
+                                    @if ($item->status == 'A')
+                                        <span class="badge bg-success-subtle text-success-emphasis">Aktif</span>
+                                    @else
+                                        <span class="badge bg-danger-subtle text-danger-emphasis">Tidak Aktif</span>
+                                    @endif
+                                </td>
+                                @canany([$modul . '.edit', $modul . '.destroy', $modul . '.matakuliah.index'])
+                                    <td class="text-nowrap">
+                                        @can($modul . '.matakuliah.index')
+                                            <a href="{{ route($modul . '.matakuliah.index', Crypt::encrypt($item->id)) }}"
+                                                class="btn btn-primary btn-sm" title="Kelola mata kuliah"><i
+                                                    class='bx bx-book-open'></i> Mata Kuliah</a>
+                                        @endcan
                                         @can($modul . '.edit')
                                             <a href="{{ route($modul . '.edit', Crypt::encrypt($item->id)) }}"
                                                 class="btn btn-warning btn-sm"><i class='bx bx-message-square-edit me-0'></i></a>
