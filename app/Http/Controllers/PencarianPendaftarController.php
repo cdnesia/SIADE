@@ -62,9 +62,9 @@ class PencarianPendaftarController extends Controller
                 ->orderBy('nama_daftar')
                 ->limit(self::MAKS_HASIL * 3)
                 ->get([
-                    // nomor_pmb = pmb.nomor (kolom nomor milik pmb_prodi sendiri)
-                    'nomor_pmb', 'pmb', 'nim', 'nama_daftar', 'prodi', 'nama_kelas', 'pmb_gelombang',
-                    'nama_jalur', 'sekolah_asal', 'hp_daftar', 'email',
+                    // nomor = id pmb_prodi (dipakai import ke master), nomor_pmb = pmb.nomor (dipakai generate NPM)
+                    'nomor', 'nomor_pmb', 'pmb', 'nim', 'nama_daftar', 'prodi', 'nama_kelas', 'pmb_gelombang',
+                    'nama_jalur', 'gelombang', 'sekolah_asal', 'hp_daftar', 'email',
                 ])
                 ->unique('pmb')
                 ->values();

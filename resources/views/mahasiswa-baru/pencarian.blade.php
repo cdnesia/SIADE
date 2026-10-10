@@ -67,9 +67,9 @@
                                 <th>Jalur / Gelombang</th>
                                 <th>Kontak</th>
                                 <th>NIM</th>
-                                @can('mahasiswa-baru.pencarian.generate-nim')
+                                @canany(['mahasiswa-baru.pencarian.generate-nim', 'mahasiswa.sync.import'])
                                     <th class="text-end">Aksi</th>
-                                @endcan
+                                @endcanany
                             </tr>
                         </thead>
                         <tbody>
@@ -85,7 +85,7 @@
                                     <td>{{ $item->nama_kelas ?: '-' }}</td>
                                     <td>
                                         <div>{{ $item->nama_jalur ?: '-' }}</div>
-                                        <small class="text-muted">{{ $item->pmb_gelombang }}</small>
+                                        <small class="text-muted">{{ $item->gelombang ?: '-' }}</small>
                                     </td>
                                     <td>
                                         <div class="text-nowrap">{{ $item->hp_daftar ?: '-' }}</div>
@@ -103,9 +103,10 @@
                                             <span class="badge bg-secondary-subtle text-secondary-emphasis">Belum ada NIM</span>
                                         @endif
                                     </td>
-                                    @can('mahasiswa-baru.pencarian.generate-nim')
+                                    @canany(['mahasiswa-baru.pencarian.generate-nim', 'mahasiswa.sync.import'])
                                         <td class="text-end text-nowrap">
                                             @if (!$item->nim)
+                                                @can('mahasiswa-baru.pencarian.generate-nim')
                                                 <form action="{{ route('mahasiswa-baru.pencarian.generate-nim', $item->nomor_pmb) }}"
                                                     method="POST" class="d-inline form-generate"
                                                     data-nama="{{ $item->nama_daftar }}"
@@ -115,18 +116,24 @@
                                                         <i class="bx bx-id-card me-1"></i>Generate NPM
                                                     </button>
                                                 </form>
+                                                @endcan
                                             @elseif (!$item->di_master)
-                                                @can('mahasiswa.sync')
-                                                    <a href="{{ route('mahasiswa.sync', ['tahun' => $tahun]) }}"
-                                                        class="btn btn-outline-secondary btn-sm" title="Masukkan ke master lewat Sinkron Mahasiswa">
-                                                        <i class="bx bx-transfer-alt me-1"></i>Sinkron
-                                                    </a>
+                                                @can('mahasiswa.sync.import')
+                                                    <form action="{{ route('mahasiswa.sync.import') }}" method="POST"
+                                                        class="d-inline form-master" data-nama="{{ $item->nama_daftar }}"
+                                                        data-nim="{{ $item->nim }}">
+                                                        @csrf
+                                                        <input type="hidden" name="nomor[]" value="{{ $item->nomor }}">
+                                                        <button type="submit" class="btn btn-success btn-sm">
+                                                            <i class="bx bx-import me-1"></i>Masuk ke Master
+                                                        </button>
+                                                    </form>
                                                 @endcan
                                             @else
                                                 <span class="small text-muted">-</span>
                                             @endif
                                         </td>
-                                    @endcan
+                                    @endcanany
                                 </tr>
                             @endforeach
                         </tbody>
@@ -138,11 +145,14 @@
 @endsection
 @push('js')
     <script>
-        // Konfirmasi sebelum menerbitkan NPM; tombol dikunci agar tidak terkirim dua kali
-        document.querySelectorAll('.form-generate').forEach(function(form) {
+        // Konfirmasi sebelum aksi; tombol dikunci agar tidak terkirim dua kali
+        document.querySelectorAll('.form-generate, .form-master').forEach(function(form) {
             form.addEventListener('submit', function(e) {
-                var pesan = 'Terbitkan NPM untuk ' + form.dataset.nama + ' (' + form.dataset.prodi + ')?\n' +
-                    'NPM diterbitkan tanpa cek pembayaran dan tidak bisa dibatalkan dari halaman ini.';
+                var pesan = form.classList.contains('form-generate') ?
+                    'Terbitkan NPM untuk ' + form.dataset.nama + ' (' + form.dataset.prodi + ')?\n' +
+                    'NPM diterbitkan tanpa cek pembayaran dan tidak bisa dibatalkan dari halaman ini.' :
+                    'Masukkan ' + form.dataset.nama + ' (NIM ' + form.dataset.nim + ') ke master mahasiswa?\n' +
+                    'Akun login juga dibuat dengan username dan password = NIM.';
                 if (!confirm(pesan)) {
                     e.preventDefault();
                     return;
