@@ -159,7 +159,7 @@
                                                     <button type="button" class="btn btn-warning btn-sm btn-edit"
                                                         title="Edit kelas, prodi, jurusan" data-bs-toggle="modal"
                                                         data-bs-target="#modal-edit"
-                                                        data-url="{{ route('mahasiswa.sync.update', $item->nomor) }}"
+                                                        data-url="{{ route('mahasiswa.sync.update', $item->nomor_pmb) }}"
                                                         data-nama="{{ $item->nama_daftar }}" data-nim="{{ $item->nim }}"
                                                         data-prodi="{{ $item->prodi }}" data-kelas="{{ $item->kelas }}"
                                                         data-jurusan="{{ $item->jurusan }}">
@@ -167,7 +167,7 @@
                                                     </button>
                                                 @endcan
                                                 @can('mahasiswa.sync.generate-nim')
-                                                    <form action="{{ route('mahasiswa.sync.generate-nim', $item->nomor) }}"
+                                                    <form action="{{ route('mahasiswa.sync.generate-nim', $item->nomor_pmb) }}"
                                                         method="POST" class="d-inline">
                                                         @csrf
                                                         <button type="submit" class="btn btn-outline-primary btn-sm"

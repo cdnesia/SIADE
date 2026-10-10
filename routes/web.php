@@ -17,6 +17,7 @@ use App\Http\Controllers\LembagaBeasiswaController;
 use App\Http\Controllers\MahasiswaBaruController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\MahasiswaPTRPLController;
+use App\Http\Controllers\PencarianPendaftarController;
 use App\Http\Controllers\PenerimaBeasiswaController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\RolesController;
@@ -103,6 +104,8 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::prefix('mahasiswa-baru')->name('mahasiswa-baru.')->group(function () {
         Route::get('/', [MahasiswaBaruController::class, 'index'])->name('index');
         Route::get('/export', [MahasiswaBaruController::class, 'export'])->name('export');
+        Route::get('/pencarian', [PencarianPendaftarController::class, 'index'])->name('pencarian');
+        Route::post('/pencarian/{nomor}/generate-nim', [PencarianPendaftarController::class, 'generateNim'])->name('pencarian.generate-nim');
     });
 
     Route::resource('kurikulum', KurikulumController::class)->except('show');

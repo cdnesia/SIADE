@@ -47,7 +47,8 @@ class PenmaruMahasiswaService
             ->orderBy('prodi')
             ->orderBy('nim')
             ->get([
-                'nomor', 'pmb', 'nim', 'nim_num', 'nama_daftar', 'prodi', 'kelas', 'nama_kelas',
+                // nomor = id pmb_prodi (dipakai import), nomor_pmb = pmb.nomor (dipakai edit & generate NIM)
+                'nomor', 'nomor_pmb', 'pmb', 'nim', 'nim_num', 'nama_daftar', 'prodi', 'kelas', 'nama_kelas',
                 'jurusan', 'sekolah_asal', 'pmb_gelombang', 'nama_jalur', 'hp_daftar', 'email',
             ])
             ->unique('pmb')

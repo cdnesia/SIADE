@@ -10,6 +10,7 @@
             'icon' => 'bx bx-user-plus',
             'children' => [
                 ['title' => 'Generate NPM', 'route' => 'mahasiswa-baru.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Pencarian Pendaftar', 'route' => 'mahasiswa-baru.pencarian', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Sinkron Mahasiswa', 'route' => 'mahasiswa.sync', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
