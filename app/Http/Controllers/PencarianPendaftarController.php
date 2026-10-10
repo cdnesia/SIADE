@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Daftar seluruh pendaftar PMB (sumber data sama dengan Generate NPM) dengan filter seperti Sinkron Mahasiswa,
- * tanpa memperhatikan status pembayaran. NPM bisa diterbitkan per pendaftar atau sekaligus untuk yang dicentang.
+ * Daftar pendaftar PMB yang belum memiliki NIM (sumber data sama dengan Generate NPM) dengan filter seperti
+ * Sinkron Mahasiswa, tanpa memperhatikan status pembayaran. NPM bisa diterbitkan per pendaftar atau sekaligus.
  */
 class PencarianPendaftarController extends Controller
 {
@@ -33,10 +33,11 @@ class PencarianPendaftarController extends Controller
                 ->where('na', 'N')
                 ->whereRaw('LEFT(pmb_gelombang, 8) = ?', [$d['tahun']])
                 ->whereNotIn('pmb', MahasiswaBaruController::EXCLUDE)
+                ->where(fn($w) => $w->whereNull('nim')->orWhere('nim', ''))
                 ->orderBy('nama_daftar')
                 ->get([
-                    // nomor = id pmb_prodi (dipakai import ke master), nomor_pmb = pmb.nomor (dipakai generate NPM)
-                    'nomor', 'nomor_pmb', 'pmb', 'nim', 'nama_daftar', 'prodi', 'kelas', 'nama_kelas',
+                    // nomor_pmb = pmb.nomor (kolom nomor milik pmb_prodi sendiri)
+                    'nomor_pmb', 'pmb', 'nama_daftar', 'prodi', 'kelas', 'nama_kelas',
                     'nama_jalur', 'gelombang', 'sekolah_asal', 'hp_daftar', 'email',
                 ])
                 ->unique('pmb')
@@ -48,32 +49,22 @@ class PencarianPendaftarController extends Controller
             return redirect()->route('dashboard')->with('error', '✕ Gagal memuat data. Periksa koneksi Anda.');
         }
 
-        // Tandai yang NIM-nya sudah ada di master_mahasiswa lokal
-        $diMaster = DB::table('master_mahasiswa')
-            ->whereIn('npm', $pendaftar->pluck('nim')->filter())
-            ->pluck('npm')
-            ->flip();
+        // NPM hanya bisa dibuat jika prodinya dikenal (kode prodi bagian dari NIM)
         foreach ($pendaftar as $p) {
-            $p->di_master = !empty($p->nim) && isset($diMaster[$p->nim]);
-            // NPM hanya bisa dibuat jika belum ber-NIM dan prodinya dikenal (kode prodi bagian dari NIM)
-            $p->bisa_generate = empty($p->nim) && isset($d['prodi'][$p->prodi]);
+            $p->bisa_generate = isset($d['prodi'][$p->prodi]);
         }
 
         $d['ringkasan'] = [
             'total' => $pendaftar->count(),
-            'belum_nim' => $pendaftar->filter(fn($p) => empty($p->nim))->count(),
-            'belum_master' => $pendaftar->filter(fn($p) => !empty($p->nim) && !$p->di_master)->count(),
-            'sudah_master' => $pendaftar->where('di_master', true)->count(),
+            'bisa_generate' => $pendaftar->where('bisa_generate', true)->count(),
+            'tanpa_prodi' => $pendaftar->where('bisa_generate', false)->count(),
         ];
 
         // Filter
-        $d['filter'] = $request->only(['prodi', 'kelas', 'status']);
+        $d['filter'] = $request->only(['prodi', 'kelas']);
         $d['pendaftar'] = $pendaftar
             ->when($request->filled('prodi'), fn($c) => $c->where('prodi', $request->prodi))
             ->when($request->filled('kelas'), fn($c) => $c->where('kelas', (int) $request->kelas))
-            ->when($request->status === 'belum_nim', fn($c) => $c->filter(fn($p) => empty($p->nim)))
-            ->when($request->status === 'belum_master', fn($c) => $c->filter(fn($p) => !empty($p->nim) && !$p->di_master))
-            ->when($request->status === 'sudah_master', fn($c) => $c->where('di_master', true))
             ->values();
 
         return view('mahasiswa-baru.pencarian', $d);
