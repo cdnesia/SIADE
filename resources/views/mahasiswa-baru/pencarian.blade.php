@@ -7,41 +7,84 @@
                 dapat diterbitkan per pendaftar atau sekaligus untuk yang dicentang.</small>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ route($modul) }}" class="row g-2 align-items-end mb-3">
-                <div class="col-6 col-md-2">
-                    <label class="form-label" for="f-tahun">Tahun PMB</label>
-                    <select name="tahun" id="f-tahun" class="form-select" onchange="this.form.submit()">
-                        @foreach ($daftar_tahun as $t)
-                            <option value="{{ $t }}" {{ $tahun == $t ? 'selected' : '' }}>{{ substr($t, 4) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label" for="f-prodi">Program Studi</label>
-                    <select name="prodi" id="f-prodi" class="form-select" onchange="this.form.submit()">
-                        <option value="">Semua prodi</option>
-                        @foreach ($prodi as $p)
-                            <option value="{{ $p->kode }}" {{ ($filter['prodi'] ?? '') == $p->kode ? 'selected' : '' }}>
-                                {{ $p->nama }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-6 col-md-2">
-                    <label class="form-label" for="f-kelas">Kelas</label>
-                    <select name="kelas" id="f-kelas" class="form-select" onchange="this.form.submit()">
-                        <option value="">Semua kelas</option>
-                        @foreach ($kelas as $k)
-                            <option value="{{ $k->id }}" {{ ($filter['kelas'] ?? '') == $k->id ? 'selected' : '' }}>
-                                {{ $k->nama }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-5 d-flex gap-2">
-                    @if (array_filter($filter))
-                        <a href="{{ route($modul, ['tahun' => $tahun]) }}" class="btn btn-outline-secondary w-100">
-                            <i class='bx bx-reset'></i> Reset Filter
+            @php
+                // Label filter aktif untuk ditampilkan sebagai chip yang bisa dihapus satu per satu
+                $filterAktif = collect([
+                    'prodi' => ['bx-book-open', isset($filter['prodi']) ? $prodi[$filter['prodi']]->nama ?? $filter['prodi'] : null],
+                    'kelas' => ['bx-chalkboard', isset($filter['kelas']) ? $kelas[$filter['kelas']]->nama ?? $filter['kelas'] : null],
+                    'jalur' => ['bx-directions', isset($filter['jalur']) ? $jalur->firstWhere('id', $filter['jalur'])->nama ?? $filter['jalur'] : null],
+                ])->filter(fn($f) => filled($f[1]));
+            @endphp
+            <form method="GET" action="{{ route($modul) }}" id="form-filter" class="filter-panel border rounded-3 p-3 mb-3">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="filter-ikon me-2"><i class='bx bx-filter-alt'></i></span>
+                    <div>
+                        <div class="fw-semibold">Filter Pendaftar</div>
+                        <small class="text-muted">Pilihan langsung diterapkan</small>
+                    </div>
+                    @if ($filterAktif->isNotEmpty())
+                        <a href="{{ route($modul, ['tahun' => $tahun]) }}" class="btn btn-sm btn-outline-secondary ms-auto">
+                            <i class='bx bx-reset'></i> Reset
                         </a>
                     @endif
+                </div>
+                <div class="row g-3">
+                    <div class="col-6 col-lg-2">
+                        <label class="form-label small fw-semibold text-muted mb-1" for="f-tahun">
+                            <i class='bx bx-calendar'></i> Tahun PMB</label>
+                        <select name="tahun" id="f-tahun" class="form-select filter-otomatis">
+                            @foreach ($daftar_tahun as $t)
+                                <option value="{{ $t }}" {{ $tahun == $t ? 'selected' : '' }}>{{ substr($t, 4) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <label class="form-label small fw-semibold text-muted mb-1" for="f-kelas">
+                            <i class='bx bx-chalkboard'></i> Kelas</label>
+                        <select name="kelas" id="f-kelas" class="form-select filter-otomatis">
+                            <option value="">Semua kelas</option>
+                            @foreach ($kelas as $k)
+                                <option value="{{ $k->id }}" {{ ($filter['kelas'] ?? '') == $k->id ? 'selected' : '' }}>
+                                    {{ $k->nama }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label small fw-semibold text-muted mb-1" for="f-prodi">
+                            <i class='bx bx-book-open'></i> Program Studi</label>
+                        <select name="prodi" id="f-prodi" class="form-select filter-otomatis filter-cari"
+                            data-placeholder="Semua prodi">
+                            <option value=""></option>
+                            @foreach ($prodi as $p)
+                                <option value="{{ $p->kode }}" {{ ($filter['prodi'] ?? '') == $p->kode ? 'selected' : '' }}>
+                                    {{ $p->nama }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label small fw-semibold text-muted mb-1" for="f-jalur">
+                            <i class='bx bx-directions'></i> Jalur Masuk</label>
+                        <select name="jalur" id="f-jalur" class="form-select filter-otomatis filter-cari"
+                            data-placeholder="Semua jalur">
+                            <option value=""></option>
+                            @foreach ($jalur as $j)
+                                <option value="{{ $j->id }}" data-jumlah="{{ $j->jumlah }}"
+                                    {{ ($filter['jalur'] ?? '') == $j->id ? 'selected' : '' }}>{{ $j->nama }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 border-top mt-3 pt-3">
+                    <span class="small text-muted me-1">
+                        Menampilkan <strong class="text-body">{{ $pendaftar->count() }}</strong> dari
+                        {{ $ringkasan['total'] }} pendaftar
+                    </span>
+                    @foreach ($filterAktif as $kunci => [$ikon, $label])
+                        <a href="{{ route($modul, array_filter(['tahun' => $tahun] + \Illuminate\Support\Arr::except($filter, $kunci))) }}"
+                            class="filter-chip" title="Hapus filter ini">
+                            <i class='bx {{ $ikon }}'></i> {{ $label }} <i class='bx bx-x'></i>
+                        </a>
+                    @endforeach
                 </div>
             </form>
 
@@ -174,12 +217,76 @@
 @endsection
 @push('css')
     <link href="{{ asset('') }}assets/plugins/datatable/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
+    <style>
+        .filter-panel {
+            background: var(--bs-tertiary-bg, #f8f9fa);
+        }
+
+        .filter-ikon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: .5rem;
+            background: rgba(var(--bs-primary-rgb), .1);
+            color: var(--bs-primary);
+            font-size: 1.25rem;
+        }
+
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .25rem;
+            padding: .2rem .6rem;
+            border-radius: 50rem;
+            font-size: .8rem;
+            background: rgba(var(--bs-primary-rgb), .1);
+            color: var(--bs-primary);
+            text-decoration: none;
+        }
+
+        .filter-chip:hover {
+            background: rgba(var(--bs-primary-rgb), .2);
+            color: var(--bs-primary);
+        }
+
+        .filter-chip .bx-x {
+            font-size: 1rem;
+        }
+
+        .filter-jumlah {
+            float: right;
+            font-size: .75rem;
+            padding: 0 .45rem;
+            border-radius: 50rem;
+            background: var(--bs-secondary-bg, #e9ecef);
+            color: var(--bs-secondary-color, #6c757d);
+        }
+    </style>
 @endpush
 @push('js')
     <script src="{{ asset('') }}assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
     <script src="{{ asset('') }}assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
     <script>
         $(function() {
+            // Prodi & jalur bisa dicari; jumlah pendaftar per jalur tampil di sisi kanan opsi
+            $('.filter-cari').each(function() {
+                $(this).select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: $(this).data('placeholder'),
+                    templateResult: function(opsi) {
+                        const jumlah = $(opsi.element).data('jumlah');
+                        return jumlah ? $('<span>').text(opsi.text).append($('<span class="filter-jumlah">').text(jumlah)) : opsi.text;
+                    },
+                });
+            });
+            $('.filter-otomatis').on('change', function() {
+                $('#form-filter').trigger('submit');
+            });
+
             const adaCeklis = $('#cek-halaman').length > 0;
             const tabel = $('.example').DataTable({
                 lengthChange: false,

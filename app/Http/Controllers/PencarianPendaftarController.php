@@ -38,7 +38,7 @@ class PencarianPendaftarController extends Controller
                 ->get([
                     // nomor_pmb = pmb.nomor (kolom nomor milik pmb_prodi sendiri)
                     'nomor_pmb', 'pmb', 'nama_daftar', 'prodi', 'kelas', 'nama_kelas',
-                    'nama_jalur', 'gelombang', 'sekolah_asal', 'hp_daftar', 'email',
+                    'pmb_jalur', 'nama_jalur', 'gelombang', 'sekolah_asal', 'hp_daftar', 'email',
                 ])
                 ->unique('pmb')
                 ->values();
@@ -61,10 +61,17 @@ class PencarianPendaftarController extends Controller
         ];
 
         // Filter
-        $d['filter'] = $request->only(['prodi', 'kelas']);
+        // Semua jalur masuk yang ada pada pendaftar tahun ini, beserta jumlahnya (sebelum difilter)
+        $d['jalur'] = $pendaftar->groupBy('pmb_jalur')
+            ->map(fn($c, $id) => (object) ['id' => $id, 'nama' => $c->first()->nama_jalur ?: 'Jalur ' . $id, 'jumlah' => $c->count()])
+            ->sortBy('nama')
+            ->values();
+
+        $d['filter'] = $request->only(['prodi', 'kelas', 'jalur']);
         $d['pendaftar'] = $pendaftar
             ->when($request->filled('prodi'), fn($c) => $c->where('prodi', $request->prodi))
             ->when($request->filled('kelas'), fn($c) => $c->where('kelas', (int) $request->kelas))
+            ->when($request->filled('jalur'), fn($c) => $c->where('pmb_jalur', (int) $request->jalur))
             ->values();
 
         return view('mahasiswa-baru.pencarian', $d);
