@@ -230,7 +230,18 @@ class PenmaruMahasiswaService
             ];
         }
 
-        DB::transaction(function () use (&$baris) {
+        $this->simpanKeMaster($baris);
+
+        return ['ditambah' => count($baris), 'dilewati' => $dilewati];
+    }
+
+    /**
+     * Insert baris ke master_mahasiswa beserta akun login mahasiswanya dalam satu transaksi.
+     * Dipakai import dari PMB maupun form Tambah Mahasiswa.
+     */
+    public function simpanKeMaster(array $baris): void
+    {
+        DB::transaction(function () use ($baris) {
             $userId = $this->buatAkunMahasiswa($baris);
             foreach ($baris as &$b) {
                 $b['user_id'] = $userId[$b['npm']];
@@ -239,8 +250,6 @@ class PenmaruMahasiswaService
 
             collect($baris)->chunk(100)->each(fn($c) => DB::table('master_mahasiswa')->insert($c->all()));
         });
-
-        return ['ditambah' => count($baris), 'dilewati' => $dilewati];
     }
 
     /**
