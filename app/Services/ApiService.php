@@ -243,7 +243,7 @@ class ApiService
 
                 return [
                     'error_code' => $response->status(),
-                    'error_desc' => 'HTTP error: ' . $response->status(),
+                    'error_desc' => $response->json('message') ?? 'HTTP error: ' . $response->status(),
                     'data' => null,
                 ];
             }

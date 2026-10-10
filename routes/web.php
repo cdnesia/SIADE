@@ -21,6 +21,7 @@ use App\Http\Controllers\PencarianPendaftarController;
 use App\Http\Controllers\PenerimaBeasiswaController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\RolesController;
+use App\Http\Controllers\SinkronPembayaranController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SyncMahasiswaController;
 use App\Http\Controllers\TahunAkademikController;
@@ -106,6 +107,8 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::get('/export', [MahasiswaBaruController::class, 'export'])->name('export');
         Route::get('/pencarian', [PencarianPendaftarController::class, 'index'])->name('pencarian');
         Route::post('/pencarian/generate-nim', [PencarianPendaftarController::class, 'generateNim'])->name('pencarian.generate-nim');
+        Route::get('/sinkron-pembayaran', [SinkronPembayaranController::class, 'index'])->name('sinkron-pembayaran');
+        Route::post('/sinkron-pembayaran', [SinkronPembayaranController::class, 'sinkron'])->name('sinkron-pembayaran.proses');
     });
 
     Route::resource('kurikulum', KurikulumController::class)->except('show');
