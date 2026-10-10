@@ -146,8 +146,8 @@ class GenerateAkm extends Command
                         'ipk' => $sksTotal ? round($bobotTotal / $sksTotal, 2) : 0,
                         'sks_semester' => $sksSemester,
                         'sks_total' => $sksTotal,
-                        // 'status_mahasiswa' => $statusOverride ? $statusLama : ($adaKrsPeriodeIni ? 'A' : 'N'),
-                        'status_mahasiswa' => 'A',
+                        'status_mahasiswa' => $statusOverride ? $statusLama : ($adaKrsPeriodeIni ? 'A' : 'N'),
+                        // 'status_mahasiswa' => 'A',
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
