@@ -117,7 +117,7 @@ class GenerateAkm extends Command
                         'ipk' => $sksTotal ? round($bobotTotal / $sksTotal, 2) : 0,
                         'sks_semester' => $sksSemester,
                         'sks_total' => $sksTotal,
-                        'status_mahasiswa' => $status,
+                        'status_mahasiswa' => 'A',
                     ]
                 );
 
