@@ -105,7 +105,7 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::get('/', [MahasiswaBaruController::class, 'index'])->name('index');
         Route::get('/export', [MahasiswaBaruController::class, 'export'])->name('export');
         Route::get('/pencarian', [PencarianPendaftarController::class, 'index'])->name('pencarian');
-        Route::post('/pencarian/{nomor}/generate-nim', [PencarianPendaftarController::class, 'generateNim'])->name('pencarian.generate-nim');
+        Route::post('/pencarian/generate-nim', [PencarianPendaftarController::class, 'generateNim'])->name('pencarian.generate-nim');
     });
 
     Route::resource('kurikulum', KurikulumController::class)->except('show');
