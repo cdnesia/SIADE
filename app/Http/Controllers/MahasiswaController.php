@@ -619,29 +619,59 @@ class MahasiswaController extends Controller
             ], 500);
         }
     }
+    /**
+     * Hapus mahasiswa dari master beserta akun loginnya. Ditolak jika masih ada data akademik
+     * yang merujuk NPM-nya, supaya tidak meninggalkan data yatim.
+     */
     public function destroy($id)
     {
         try {
             $id = Crypt::decrypt($id);
-            $deleted = DB::table('master_mahasiswa')->where('id', $id)->delete();
-
-            if ($deleted) {
-                return redirect()
-                    ->route($this->modul . '.index')
-                    ->with('success', 'Data mahasiswa berhasil dihapus');
-            } else {
-                return redirect()
-                    ->route($this->modul . '.index')
-                    ->with('error', 'Data mahasiswa tidak ditemukan');
-            }
-
-            return redirect()
-                ->route($this->modul . '.index')
-                ->with('success', 'Data mahasiswa berhasil dihapus');
         } catch (DecryptException $e) {
-            return redirect()
-                ->route($this->modul . '.index')
-                ->with('error', 'ID tidak valid');
+            return redirect()->route($this->modul . '.index')->with('error', '✕ ID tidak valid.');
         }
+
+        $mahasiswa = DB::table('master_mahasiswa')->where('id', $id)->first(['id', 'npm', 'user_id']);
+        if (!$mahasiswa) {
+            return redirect()->route($this->modul . '.index')->with('error', '✕ Data mahasiswa tidak ditemukan.');
+        }
+
+        $terkait = collect([
+            'tbl_mahasiswa_krs' => 'KRS',
+            'tbl_mahasiswa_akm' => 'AKM',
+            'tbl_jadwal_pertemuan_absensi' => 'absensi',
+            'tbl_pendaftaran_kegiatan_mahasiswa' => 'kegiatan',
+            'tbl_penerima_beasiswa' => 'penerima beasiswa',
+            'tbl_verifikasi_beasiswa' => 'verifikasi beasiswa',
+            'tbl_tugas_akhir' => 'tugas akhir',
+        ])->map(fn($label, $tabel) => [$label, DB::table($tabel)->where('npm', $mahasiswa->npm)->count()])
+            ->filter(fn($t) => $t[1] > 0);
+
+        if ($terkait->isNotEmpty()) {
+            return back()->with('error', '✕ Gagal menghapus data. Mahasiswa masih memiliki data '
+                . $terkait->map(fn($t) => "{$t[0]} ({$t[1]})")->implode(', ') . '.');
+        }
+
+        try {
+            DB::transaction(function () use ($mahasiswa) {
+                DB::table('master_mahasiswa')->where('id', $mahasiswa->id)->delete();
+
+                // Hanya akun yang dibuat untuk mahasiswa ini (username = NPM) yang ikut dihapus
+                if ($mahasiswa->user_id) {
+                    $akun = DB::table('users')->where('id', $mahasiswa->user_id)->where('email', $mahasiswa->npm);
+                    if ($akun->exists()) {
+                        DB::table('model_has_roles')->where('model_id', $mahasiswa->user_id)
+                            ->where('model_type', \App\Models\User::class)->delete();
+                        $akun->delete();
+                    }
+                }
+            });
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', '✕ Gagal menghapus data. Coba lagi.');
+        }
+
+        return redirect()->route($this->modul . '.index')
+            ->with('success', "✓ Data berhasil dihapus. Mahasiswa {$mahasiswa->npm} dan akun loginnya sudah dihapus");
     }
 }

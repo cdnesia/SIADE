@@ -21,6 +21,16 @@
                                 <a href="{{ route('mahasiswa.show', $mahasiswa['id']) }}?p=khs"
                                     class="btn btn-sm {{ $page == 'khs' ? 'btn-primary' : 'btn-info' }}"><i class="bx bx-bar-chart-alt-2 mr-1"></i>KHS</a>
                             @endcan
+                            @can($modul . '.destroy')
+                                <form action="{{ route($modul . '.destroy', $mahasiswa['id']) }}" method="POST"
+                                    class="mt-2" id="form-hapus-mahasiswa">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bx bx-trash me-1"></i>Hapus Mahasiswa
+                                    </button>
+                                </form>
+                            @endcan
                         </div>
                     </div>
                     <hr class="my-4" />
@@ -488,6 +498,16 @@
     <script src="{{ asset('') }}assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
     <script src="{{ asset('') }}assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
     <script>
+        $('#form-hapus-mahasiswa').on('submit', function(e) {
+            if (!confirm('Hapus mahasiswa {{ $mahasiswa['npm'] }} - {{ addslashes($mahasiswa['nama_mahasiswa']) }}?\n\n' +
+                    'Akun login mahasiswa ini ikut dihapus dan tidak bisa dikembalikan.')) {
+                e.preventDefault();
+                return;
+            }
+            $(this).find('button').prop('disabled', true)
+                .html('<span class="spinner-border spinner-border-sm me-1"></span>Menghapus...');
+        });
+
         // Pilih dosen PA dengan pencarian; dropdownParent agar select2 bisa diketik di dalam modal
         $('#pilih-dosen-pa').select2({
             theme: 'bootstrap-5',
