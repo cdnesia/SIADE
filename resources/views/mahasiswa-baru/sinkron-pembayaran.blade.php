@@ -7,6 +7,7 @@
             ->map(fn($i) => [$i['nama_bipot'] ?? 'Bipot ' . ($i['id_bipot'] ?? '-'), $i['nominal'] ?? 0]);
         $badgeStatus = [
             'siap' => 'bg-primary-subtle text-primary-emphasis',
+            'perlu_nonaktif' => 'bg-warning-subtle text-warning-emphasis',
             'sudah' => 'bg-success-subtle text-success-emphasis',
             'belum_bayar' => 'bg-secondary-subtle text-secondary-emphasis',
         ];
@@ -181,6 +182,9 @@
                                         @if ($h['bisa_sinkron'])
                                             <div>Terbayar <strong>{{ $rp($h['terbayar_baru']) }}</strong></div>
                                             <div>Ditagih <strong>{{ $rp($h['ditagih_baru']) }}</strong></div>
+                                            @if ($h['nonaktifkan'])
+                                                <span class="badge bg-secondary-subtle text-secondary-emphasis">Status → Non aktif</span>
+                                            @endif
                                         @else
                                             <span class="text-muted">-</span>
                                         @endif
@@ -194,7 +198,7 @@
                                             @if ($h['bisa_sinkron'])
                                                 <form action="{{ route('mahasiswa-baru.sinkron-pembayaran.proses') }}"
                                                     method="POST" class="d-inline form-satu"
-                                                    data-pesan="Pindahkan pembayaran {{ $rp($h['nominal_dipindahkan']) }} dari {{ $h['nomor_pendaftaran'] }} ke tagihan {{ $h['nim'] }}?{{ $h['cocok'] ? '' : ' Rincian tagihan NIM akan diganti dengan rincian tagihan PMB.' }}">
+                                                    data-pesan="{{ $h['status'] === 'perlu_nonaktif' ? "Nonaktifkan tagihan {$h['nim']} yang sudah lunas?" : "Pindahkan pembayaran {$rp($h['nominal_dipindahkan'])} dari {$h['nomor_pendaftaran']} ke tagihan {$h['nim']}?" . ($h['cocok'] ? '' : ' Rincian tagihan NIM akan diganti dengan rincian tagihan PMB.') . ($h['nonaktifkan'] ? ' Tagihan NIM akan dinonaktifkan karena sudah lunas.' : '') }}">
                                                     @csrf
                                                     <input type="hidden" name="nim[]" value="{{ $h['nim'] }}">
                                                     <input type="hidden" name="kembali_nim" value="{{ $input_nim }}">

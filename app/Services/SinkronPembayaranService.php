@@ -17,8 +17,10 @@ use RuntimeException;
  * 3. Tagihan tujuan = tagihan SPP NIM paling awal (semester pertama).
  * 4. Rincian tagihan dicocokkan; jika berbeda, rincian & potongan disalin dari tagihan sumber.
  * 5. nominal_terbayar sumber ditambahkan ke tujuan; API menghitung ulang nominal_ditagih (sisa).
+ * 6. Jika sisa ditagih jadi 0 (terbayar = total tagihan - potongan), tagihan NIM dinonaktifkan (status T).
  *
  * Tagihan dianggap sudah disinkron jika nominal_terbayar NIM sudah mencapai pembayaran PMB.
+ * Tagihan yang sudah disinkron & lunas tapi masih aktif bisa diproses ulang untuk dinonaktifkan saja.
  */
 class SinkronPembayaranService
 {
@@ -66,9 +68,15 @@ class SinkronPembayaranService
             'idRecordTagihan' => $tujuan['id_record_tagihan'],
             'npm' => $nim,
             'jenisTagihan' => $tujuan['jenis_tagihan'],
-            'nominalTerbayar' => $hasil['terbayar_baru'],
         ];
-        if (!$hasil['cocok']) {
+        // Sudah disinkron sebelumnya: pembayaran tidak ditambahkan lagi, hanya status dinonaktifkan
+        if ($hasil['status'] !== 'perlu_nonaktif') {
+            $payload['nominalTerbayar'] = $hasil['terbayar_baru'];
+        }
+        if ($hasil['nonaktifkan']) {
+            $payload['statusAktif'] = 'T';
+        }
+        if (!$hasil['cocok'] && $hasil['status'] !== 'perlu_nonaktif') {
             $payload['detailTagihan'] = $this->keCamelCase($sumber['detail_tagihan']);
             $payload['detailPotongan'] = $this->keCamelCase($sumber['detail_potongan']);
         }
@@ -130,10 +138,12 @@ class SinkronPembayaranService
             'nominal_dipindahkan' => $sumber ? (float) $sumber['nominal_terbayar'] : 0,
             'terbayar_baru' => null,
             'ditagih_baru' => null,
+            'nonaktifkan' => false,
             'bisa_sinkron' => false,
         ];
 
         $sudahSinkron = false;
+        $sudahLunasAktif = false;
         if ($sumber && $tujuan) {
             $hasil['cocok'] = $this->rincian($sumber['detail_tagihan']) == $this->rincian($tujuan['detail_tagihan'])
                 && $this->rincian($sumber['detail_potongan']) == $this->rincian($tujuan['detail_potongan']);
@@ -146,6 +156,17 @@ class SinkronPembayaranService
             // Terbayar NIM sudah mencapai pembayaran PMB = pernah disinkron
             $sudahSinkron = $hasil['nominal_dipindahkan'] > 0
                 && round((float) $tujuan['nominal_terbayar'], 2) >= round($hasil['nominal_dipindahkan'], 2);
+
+            if ($sudahSinkron) {
+                // Pembayaran tidak dipindahkan lagi, angka tetap seperti tagihan NIM saat ini
+                $hasil['terbayar_baru'] = round((float) $tujuan['nominal_terbayar'], 2);
+                $hasil['ditagih_baru'] = round((float) $tujuan['nominal_ditagih'], 2);
+                $sisa = round((float) $tujuan['total_tagihan'] - (float) $tujuan['total_potongan'] - $hasil['terbayar_baru'], 2);
+                $sudahLunasAktif = $tujuan['status_aktif'] === 'Y' && $hasil['ditagih_baru'] <= 0 && $sisa <= 0;
+            }
+
+            // Total terbayar sudah sama dengan total tagihan (sisa ditagih 0) -> tagihan NIM dinonaktifkan
+            $hasil['nonaktifkan'] = $hasil['ditagih_baru'] <= 0;
         }
 
         [$status, $keterangan] = match (true) {
@@ -153,13 +174,14 @@ class SinkronPembayaranService
             !$sumber => ['tanpa_sumber', "Tagihan daftar ulang {$daftar->pmb} tidak ditemukan"],
             (float) $sumber['nominal_terbayar'] <= 0 => ['belum_bayar', "Belum ada pembayaran pada tagihan {$daftar->pmb}"],
             !$tujuan => ['tanpa_tujuan', 'Tagihan NIM belum dibuat di SIMKEU'],
+            $sudahLunasAktif => ['perlu_nonaktif', 'Sudah disinkron & lunas, tagihan NIM masih aktif. Sinkronkan untuk menonaktifkan'],
             $sudahSinkron => ['sudah', 'Sudah disinkron, pembayaran PMB sudah tercatat di tagihan NIM'],
             $tujuan['status_aktif'] !== 'Y' => ['lunas', 'Tagihan NIM sudah lunas/tidak aktif, tidak bisa diubah'],
             default => ['siap', 'Siap disinkron'],
         };
         $hasil['status'] = $status;
         $hasil['keterangan'] = $keterangan;
-        $hasil['bisa_sinkron'] = $status === 'siap';
+        $hasil['bisa_sinkron'] = in_array($status, ['siap', 'perlu_nonaktif']);
 
         return $hasil;
     }

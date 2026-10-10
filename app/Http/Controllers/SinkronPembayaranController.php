@@ -38,9 +38,9 @@ class SinkronPembayaranController extends Controller
 
         $d['ringkasan'] = [
             'total' => $d['hasil']->count(),
-            'siap' => $d['hasil']->where('status', 'siap')->count(),
+            'siap' => $d['hasil']->where('bisa_sinkron', true)->count(),
             'sudah' => $d['hasil']->where('status', 'sudah')->count(),
-            'lainnya' => $d['hasil']->whereNotIn('status', ['siap', 'sudah'])->count(),
+            'lainnya' => $d['hasil']->whereNotIn('status', ['siap', 'perlu_nonaktif', 'sudah'])->count(),
         ];
 
         return view('mahasiswa-baru.sinkron-pembayaran', $d);
