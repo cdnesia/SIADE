@@ -36,7 +36,13 @@ class JadwalDosenController extends Controller
                     'h.nama_hari',
                     'm.kode_mata_kuliah',
                     'm.nama_mata_kuliah_idn'
-                );
+                )
+                ->selectSub(function ($q) {
+                    // Jumlah mahasiswa yang mengambil jadwal ini di KRS
+                    $q->from('tbl_mahasiswa_krs as krs')
+                        ->selectRaw('COUNT(*)')
+                        ->whereColumn('krs.jadwal_id', 'j.id');
+                }, 'terisi');
 
             if ($request->prodi) {
                 $query->where('j.kode_program_studi', $request->prodi);
@@ -95,6 +101,21 @@ class JadwalDosenController extends Controller
                 ->addColumn('nama_ruangan', function ($row) use ($masterRuangan) {
                     return $masterRuangan[$row->ruang_id]['nama'] ?? '-';
                 })
+                ->addColumn('kuota', function ($row) use ($masterRuangan) {
+                    return $masterRuangan[$row->ruang_id]['kuota'] ?? '-';
+                })
+                ->editColumn('terisi', function ($row) use ($masterRuangan) {
+                    $terisi = (int) $row->terisi;
+                    $kuota = $masterRuangan[$row->ruang_id]['kuota'] ?? null;
+
+                    // Tandai merah jika kelas sudah penuh / melebihi kuota ruangan
+                    if ($kuota !== null && $terisi >= (int) $kuota) {
+                        return '<span class="badge bg-danger">' . $terisi . '</span>';
+                    }
+
+                    return '<span class="badge bg-success">' . $terisi . '</span>';
+                })
+                ->rawColumns(['terisi'])
                 ->make(true);
         }
 

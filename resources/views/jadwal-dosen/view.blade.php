@@ -82,6 +82,8 @@
                             <th>Hari</th>
                             <th>Jam</th>
                             <th>Ruang</th>
+                            <th>Kuota</th>
+                            <th>Terisi</th>
                             <th>Kelompok</th>
                         </tr>
                     </thead>
@@ -154,6 +156,19 @@
                         name: 'nama_ruangan',
                         orderable: false,
                         searchable: false
+                    },
+                    {
+                        data: 'kuota',
+                        name: 'kuota',
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center'
+                    },
+                    {
+                        data: 'terisi',
+                        name: 'terisi',
+                        searchable: false,
+                        className: 'text-center'
                     },
                     {
                         data: 'kelompok',
