@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Akm;
 use App\Models\Fakultas;
+use App\Models\JadwalPerkuliahan;
 use App\Models\KelasPerkuliahan;
 use App\Models\KRS;
 use App\Models\KurikulumMataKuliah;
@@ -460,6 +461,83 @@ class MahasiswaController extends Controller
                 'status_mahasiswa' => $akm->status_mahasiswa,
             ],
         ]);
+    }
+    /**
+     * Ganti kelas kuliah (jadwal) pada satu baris KRS.
+     * Tanpa `jadwal_id`  : kembalikan daftar jadwal alternatif (mata kuliah & tahun akademik sama).
+     * Dengan `jadwal_id` : pindahkan KRS ke jadwal tersebut (cek kuota ruangan).
+     */
+    public function krsEdit(Request $request, $id, MasterApiService $api)
+    {
+        try {
+            $id = Crypt::decrypt($id);
+        } catch (DecryptException $e) {
+            return response()->json(['success' => false, 'message' => 'Parameter tidak valid'], 400);
+        }
+
+        $krs = KRS::with('jadwal')->find($id);
+        if (!$krs) {
+            return response()->json(['success' => false, 'message' => 'Data KRS tidak ditemukan'], 404);
+        }
+
+        // KRS hasil jadwal menyimpan mata_kuliah_id NULL, jadi ambil dari jadwalnya
+        $mataKuliahId = $krs->jadwal->mata_kuliah_id ?? $krs->mata_kuliah_id;
+        $masterRuangan = collect($api->dataRuangan()['data']['data'] ?? [])->keyBy('id');
+
+        $query = JadwalPerkuliahan::from('tbl_jadwal_perkuliahan as j')
+            ->leftJoin('master_kelas_perkuliahan as k', 'j.program_kuliah_id', '=', 'k.id')
+            ->leftJoin('master_hari as h', 'j.hari_id', '=', 'h.id')
+            ->where('j.mata_kuliah_id', $mataKuliahId)
+            ->where('j.tahun_akademik', $krs->kode_tahun_akademik)
+            ->select('j.*', 'k.nama_program_perkuliahan as nama_kelas', 'h.nama_hari')
+            ->selectSub(function ($q) {
+                $q->from('tbl_mahasiswa_krs as krs')
+                    ->selectRaw('COUNT(*)')
+                    ->whereColumn('krs.jadwal_id', 'j.id');
+            }, 'terisi');
+
+        if (!$request->filled('jadwal_id')) {
+            $masterDosen = collect($api->dataDosen()['data']['data'] ?? [])->keyBy('id');
+
+            $jadwal = $query->orderBy('j.kelompok')->orderBy('j.hari_id')->orderBy('j.jam_mulai')->get()
+                ->map(function ($row) use ($masterRuangan, $masterDosen, $krs) {
+                    $kuota = $masterRuangan[$row->ruang_id]['kuota'] ?? null;
+                    return [
+                        'id' => $row->id,
+                        'kelompok' => $row->kelompok,
+                        'nama_kelas' => $row->nama_kelas ?? '-',
+                        'hari' => $row->nama_hari ?? '-',
+                        'jam' => substr($row->jam_mulai, 0, 5) . ' - ' . substr($row->jam_selesai, 0, 5),
+                        'ruang' => $masterRuangan[$row->ruang_id]['nama'] ?? '-',
+                        'dosen' => $masterDosen[$row->dosen_id]['namaLengkap'] ?? '-',
+                        'kuota' => $kuota,
+                        'terisi' => (int) $row->terisi,
+                        'penuh' => $kuota !== null && (int) $row->terisi >= (int) $kuota,
+                        'aktif' => $row->id == $krs->jadwal_id,
+                    ];
+                });
+
+            return response()->json(['success' => true, 'data' => $jadwal]);
+        }
+
+        $jadwal = $query->where('j.id', $request->jadwal_id)->first();
+        if (!$jadwal) {
+            return response()->json(['success' => false, 'message' => 'Jadwal tidak sesuai dengan mata kuliah KRS ini'], 422);
+        }
+
+        if ($jadwal->id == $krs->jadwal_id) {
+            return response()->json(['success' => false, 'message' => 'Mahasiswa sudah berada di kelas ini'], 422);
+        }
+
+        $kuota = $masterRuangan[$jadwal->ruang_id]['kuota'] ?? null;
+        if ($kuota !== null && (int) $jadwal->terisi >= (int) $kuota) {
+            return response()->json(['success' => false, 'message' => 'Kuota kelas sudah penuh'], 422);
+        }
+
+        $krs->jadwal_id = $jadwal->id;
+        $krs->save();
+
+        return response()->json(['success' => true, 'message' => '✓ Data berhasil diperbarui']);
     }
     public function krsDestroy($id)
     {

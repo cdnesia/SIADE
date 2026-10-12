@@ -351,8 +351,11 @@
                                                             </form>
                                                         @endcan
                                                         @can($modul . '.detail.krs.edit')
-                                                            <a href="#" class="btn btn-sm btn-warning"><i
-                                                                    class="bx bx-pencil me-0"></i></a>
+                                                            <button type="button" class="btn btn-sm btn-warning btn-ganti-kelas"
+                                                                title="Ganti Kelas Kuliah"
+                                                                data-url="{{ route($modul . '.detail.krs.edit', $item['encrypted_id']) }}"
+                                                                data-matakuliah="{{ $item['kode_mata_kuliah'] }} - {{ $item['nama_mata_kuliah'] }}"><i
+                                                                    class="bx bx-pencil me-0"></i></button>
                                                         @endcan
                                                     </td>
                                                 @endcanany
@@ -364,6 +367,42 @@
                         </div>
                     </div>
                 @endforeach
+
+                {{-- Modal ganti kelas kuliah --}}
+                <div class="modal fade" id="modalGantiKelas" tabindex="-1" aria-labelledby="modalGantiKelasLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h6 class="modal-title" id="modalGantiKelasLabel">Ganti Kelas Kuliah</h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="mb-2"><strong>Mata Kuliah:</strong> <span id="gantiKelasMk">-</span></p>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Kelompok</th>
+                                                <th>Kelas</th>
+                                                <th>Hari</th>
+                                                <th>Jam</th>
+                                                <th>Ruang</th>
+                                                <th>Dosen</th>
+                                                <th class="text-center">Terisi / Kuota</th>
+                                                <th style="width: 90px">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gantiKelasBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         @elseif ($page == 'khs')
             <div class="col-lg-8">
@@ -540,6 +579,84 @@
                 error: function(xhr) {
                     alert('Gagal menghapus data');
                 }
+            });
+        });
+
+        // KRS Ganti Kelas Kuliah
+        let gantiKelasUrl = null;
+
+        function notifKrs(type, msg) {
+            Lobibox.notify(type, {
+                pauseDelayOnHover: true,
+                size: 'mini',
+                rounded: true,
+                icon: type === 'success' ? 'bx bx-check-circle' : 'bx bx-x-circle',
+                delayIndicator: false,
+                continueDelayOnInactiveTab: false,
+                position: 'bottom right',
+                msg: msg,
+                sound: false,
+            });
+        }
+
+        function muatPilihanKelas() {
+            let body = $('#gantiKelasBody');
+            body.html('<tr><td colspan="8" class="text-center text-muted"><i class="bx bx-loader bx-spin"></i> Mohon Tunggu...</td></tr>');
+
+            $.post(gantiKelasUrl, function(response) {
+                if (!response.data.length) {
+                    body.html('<tr><td colspan="8" class="text-center text-muted">Belum ada jadwal kelas untuk mata kuliah ini di tahun akademik tersebut</td></tr>');
+                    return;
+                }
+                body.empty();
+                response.data.forEach(function(j) {
+                    let kuota = j.kuota === null ? '-' : j.kuota;
+                    let badge = j.penuh ? 'bg-danger' : 'bg-success';
+                    let aksi = j.aktif ?
+                        '<span class="badge bg-primary">Kelas Saat Ini</span>' :
+                        (j.penuh ? '<span class="badge bg-secondary">Penuh</span>' :
+                            '<button type="button" class="btn btn-sm btn-primary btn-pilih-kelas" data-id="' + j.id + '">Pilih</button>');
+                    let tr = $('<tr>').toggleClass('table-primary', j.aktif);
+                    [j.kelompok, j.nama_kelas, j.hari, j.jam, j.ruang, j.dosen].forEach(function(v) {
+                        tr.append($('<td>').text(v ?? '-'));
+                    });
+                    tr.append('<td class="text-center"><span class="badge ' + badge + '">' + j.terisi + ' / ' + kuota + '</span></td>');
+                    tr.append('<td>' + aksi + '</td>');
+                    body.append(tr);
+                });
+            }).fail(function() {
+                body.html('<tr><td colspan="8" class="text-center text-danger">Gagal memuat data. <a href="#" id="ulangMuatKelas">Coba lagi</a></td></tr>');
+                notifKrs('error', '✕ Gagal memuat data. Periksa koneksi Anda.');
+            });
+        }
+
+        $(document).on('click', '.btn-ganti-kelas', function() {
+            gantiKelasUrl = $(this).data('url');
+            $('#gantiKelasMk').text($(this).data('matakuliah'));
+            $('#modalGantiKelas').modal('show');
+            muatPilihanKelas();
+        });
+
+        $(document).on('click', '#ulangMuatKelas', function(e) {
+            e.preventDefault();
+            muatPilihanKelas();
+        });
+
+        $(document).on('click', '.btn-pilih-kelas', function() {
+            let btn = $(this);
+            if (!confirm('Pindahkan mahasiswa ke kelas ini?')) return;
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+            $.post(gantiKelasUrl, {
+                jadwal_id: btn.data('id')
+            }, function(response) {
+                notifKrs('success', response.message);
+                // Muat ulang agar tabel KRS menampilkan jadwal yang baru
+                setTimeout(() => location.reload(), 800);
+            }).fail(function(xhr) {
+                let msg = xhr.responseJSON?.message;
+                notifKrs('error', msg ? '✕ ' + msg : '✕ Gagal memperbarui data. Coba lagi.');
+                btn.prop('disabled', false).text('Pilih');
             });
         });
 
