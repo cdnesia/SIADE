@@ -203,6 +203,37 @@ class MahasiswaController extends Controller
     }
 
     /**
+     * Ganti kelas perkuliahan (program_kuliah_id) mahasiswa, mis. Reguler A -> Reguler B.
+     */
+    public function updateKelas(Request $request, $id)
+    {
+        try {
+            $mahasiswa = Mahasiswa::findOrFail(Crypt::decrypt($id));
+        } catch (DecryptException $e) {
+            return back()->with('error', 'ID tidak valid.');
+        }
+
+        $validator = validator($request->all(), [
+            'program_kuliah_id' => ['required', 'integer', 'exists:master_kelas_perkuliahan,id'],
+        ], [
+            'program_kuliah_id.required' => 'Kelas perkuliahan wajib dipilih.',
+            'program_kuliah_id.exists' => 'Kelas perkuliahan tidak ditemukan.',
+        ]);
+        if ($validator->fails()) {
+            return back()->with('error', '⚠ ' . $validator->errors()->first());
+        }
+
+        try {
+            $mahasiswa->program_kuliah_id = $request->program_kuliah_id;
+            $mahasiswa->save();
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal memperbarui data. Coba lagi.');
+        }
+
+        return back()->with('success', 'Data berhasil diperbarui');
+    }
+
+    /**
      * Form tambah mahasiswa manual. Kolom yang diisi sama dengan import dari PMB (Sinkron Mahasiswa).
      */
     public function create()
@@ -363,6 +394,7 @@ class MahasiswaController extends Controller
         $d['akm'] = Akm::where('npm', $mahasiswa['npm'])->get()->keyBy('kode_tahun_akademik');
         $d['mahasiswa'] = $mahasiswa;
         $d['dosen'] = $masterDosen->sortBy('nama_lengkap')->values();
+        $d['kelasPerkuliahan'] = $masterKelas->sortBy('nama_program_perkuliahan')->values();
         $d['page'] = $page;
         $d['isPenerimaBeasiswa'] = $isPenerimaBeasiswa;
         $d['lembagaBeasiswa'] = $lembagaBeasiswa;

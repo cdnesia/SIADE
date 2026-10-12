@@ -100,7 +100,18 @@
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">Kelas Perkuliahan</td>
-                                        <td>: {{ $mahasiswa['nama_program_kuliah'] }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-start gap-2">
+                                                <span>: {{ $mahasiswa['nama_program_kuliah'] }}</span>
+                                                @can('mahasiswa.kelas.update')
+                                                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 ms-auto"
+                                                        data-bs-toggle="modal" data-bs-target="#modalKelasKuliah"
+                                                        title="Ubah kelas perkuliahan">
+                                                        <i class="bx bx-edit-alt me-0"></i> Ubah
+                                                    </button>
+                                                @endcan
+                                            </div>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">Tahun Angkatan</td>
@@ -188,6 +199,44 @@
                                     @else
                                         <small class="text-muted">Ketik nama atau NIDN untuk mencari.</small>
                                     @endif
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary btn-sm"><i class="bx bx-save"></i>
+                                        Simpan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endcan
+
+                @can('mahasiswa.kelas.update')
+                    <div class="modal fade" id="modalKelasKuliah" tabindex="-1" aria-labelledby="modalKelasKuliahLabel"
+                        aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <form method="POST" action="{{ route('mahasiswa.kelas.update', $mahasiswa['id']) }}"
+                                class="modal-content">
+                                @csrf
+                                @method('PUT')
+                                <div class="modal-header">
+                                    <div>
+                                        <h6 class="modal-title mb-0" id="modalKelasKuliahLabel">Kelas Perkuliahan</h6>
+                                        <small class="text-muted">{{ $mahasiswa['npm'] }} &middot;
+                                            {{ $mahasiswa['nama_mahasiswa'] }}</small>
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Tutup"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <label class="form-label" for="pilih-kelas-kuliah">Kelas Perkuliahan</label>
+                                    <select name="program_kuliah_id" id="pilih-kelas-kuliah" class="form-select" required>
+                                        @foreach ($kelasPerkuliahan as $item)
+                                            <option value="{{ $item->id }}"
+                                                {{ $mahasiswa['program_kuliah_id'] == $item->id ? 'selected' : '' }}>
+                                                {{ $item->nama_program_perkuliahan }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-outline-secondary btn-sm"
