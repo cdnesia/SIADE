@@ -96,14 +96,13 @@ class ImportMahasiswaBaruController extends Controller
 
         $baris = array_column($pratinjau['valid'], 'data');
 
-        // Cek ulang NPM/NIK, bisa saja sudah ditambahkan orang lain sejak pratinjau dibuat
+        // Cek ulang NPM, bisa saja sudah ditambahkan orang lain sejak pratinjau dibuat
         $npmTerpakai = DB::table('master_mahasiswa')->whereIn('npm', array_column($baris, 'npm'))->pluck('npm')->flip();
-        $nikTerpakai = DB::table('master_mahasiswa')->whereIn('nik', array_filter(array_column($baris, 'nik')))->pluck('nik')->flip();
 
         $dilewati = [];
         $simpan = [];
         foreach ($baris as $b) {
-            if (isset($npmTerpakai[$b['npm']]) || ($b['nik'] && isset($nikTerpakai[$b['nik']]))) {
+            if (isset($npmTerpakai[$b['npm']])) {
                 $dilewati[] = $b['npm'];
                 continue;
             }
@@ -118,7 +117,7 @@ class ImportMahasiswaBaruController extends Controller
 
         if (!$simpan) {
             $this->hapusPratinjau();
-            return redirect()->route($this->modul)->with('error', '✕ Gagal menambahkan data. Semua NPM/NIK sudah terdaftar.');
+            return redirect()->route($this->modul)->with('error', '✕ Gagal menambahkan data. Semua NPM sudah terdaftar.');
         }
 
         try {
@@ -132,7 +131,7 @@ class ImportMahasiswaBaruController extends Controller
 
         $pesan = '✓ Data berhasil ditambahkan. ' . count($simpan) . ' mahasiswa diimport, akun login dibuat dengan password = NPM.';
         if ($dilewati) {
-            $pesan .= ' ' . count($dilewati) . ' dilewati karena NPM/NIK sudah terdaftar: ' . implode(', ', array_slice($dilewati, 0, 10))
+            $pesan .= ' ' . count($dilewati) . ' dilewati karena NPM sudah terdaftar: ' . implode(', ', array_slice($dilewati, 0, 10))
                 . (count($dilewati) > 10 ? ', ...' : '');
         }
 

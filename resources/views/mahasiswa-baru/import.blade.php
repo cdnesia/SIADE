@@ -18,7 +18,7 @@
                 <strong>{{ session('import_selesai')['disimpan'] }}</strong> mahasiswa berhasil diimport.
                 @if (count(session('import_selesai')['dilewati']) > 0)
                     <div class="small mt-1">
-                        {{ count(session('import_selesai')['dilewati']) }} dilewati karena NPM/NIK sudah terdaftar:
+                        {{ count(session('import_selesai')['dilewati']) }} dilewati karena NPM sudah terdaftar:
                         {{ implode(', ', session('import_selesai')['dilewati']) }}
                     </div>
                 @endif
@@ -57,15 +57,13 @@
 
                 <h6 class="mb-2">Ketentuan Kolom</h6>
                 <ul class="small mb-3">
-                    <li><strong>Wajib:</strong> <code>nama_mahasiswa</code>, <code>npm</code>, <code>tahun_angkatan</code>
-                        (tahun + semester, contoh <code>20261</code>), <code>program_studi</code>, <code>kelas</code>.</li>
+                    <li>Semua kolom wajib diisi: <code>nama_mahasiswa</code>, <code>npm</code>, <code>tahun_angkatan</code>
+                        (tahun + semester, contoh <code>20261</code>), <code>program_studi</code>, <code>kelas</code>,
+                        <code>jenis_pendaftaran</code>.</li>
                     <li><code>program_studi</code>, <code>kelas</code>, dan <code>jenis_pendaftaran</code> boleh diisi kode
-                        atau nama sesuai tabel referensi di bawah. <code>jenis_pendaftaran</code> yang dikosongkan dianggap
-                        <em>Peserta didik baru</em>.</li>
-                    <li><code>jenis_kelamin</code>: <code>L</code>/<code>P</code> atau Laki-laki/Perempuan.
-                        <code>tanggal_lahir</code>: format <code>dd/mm/yyyy</code> atau tanggal Excel.</li>
-                    <li>NPM atau NIK yang sudah terdaftar, maupun yang ganda di dalam file, akan ditandai bermasalah dan
-                        tidak disimpan.</li>
+                        atau nama sesuai tabel referensi di bawah.</li>
+                    <li>Biodata lain (NIK, tanggal lahir, kontak, orang tua) dilengkapi kemudian lewat menu Data Mahasiswa.</li>
+                    <li>NPM yang sudah terdaftar, maupun yang ganda di dalam file, akan ditandai bermasalah dan tidak disimpan.</li>
                 </ul>
 
                 <a class="small" data-bs-toggle="collapse" href="#referensi" role="button" aria-expanded="false"
@@ -215,7 +213,6 @@
                                         <th>Program Studi</th>
                                         <th>Kelas</th>
                                         <th>Jenis Pendaftaran</th>
-                                        <th class="text-center">JK</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -228,11 +225,10 @@
                                             <td>{{ $v['nama_prodi'] }}</td>
                                             <td>{{ $v['nama_kelas'] }}</td>
                                             <td>{{ $v['nama_jenis'] }}</td>
-                                            <td class="text-center">{{ $v['data']['jenis_kelamin'] ?? '-' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="8" class="text-center text-muted py-4">
+                                            <td colspan="7" class="text-center text-muted py-4">
                                                 Tidak ada baris yang valid. Perbaiki file sesuai daftar di tab Bermasalah.
                                             </td>
                                         </tr>
