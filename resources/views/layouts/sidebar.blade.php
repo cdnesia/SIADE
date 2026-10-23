@@ -13,6 +13,7 @@
                 ['title' => 'Pencarian Pendaftar', 'route' => 'mahasiswa-baru.pencarian', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Sinkron Mahasiswa', 'route' => 'mahasiswa.sync', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Sinkron Pembayaran', 'route' => 'mahasiswa-baru.sinkron-pembayaran', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Import Mahasiswa', 'route' => 'mahasiswa-baru.import', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
         [

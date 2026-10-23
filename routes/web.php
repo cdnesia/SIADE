@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Feeder\BiodataMahasiswaController;
 use App\Http\Controllers\Feeder\CekMahasiswaController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ImportMahasiswaBaruController;
 use App\Http\Controllers\JadwalDosenController;
 use App\Http\Controllers\KalenderAkademikController;
 use App\Http\Controllers\KegiatanMahasiswaController;
@@ -110,6 +111,11 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::post('/pencarian/generate-nim', [PencarianPendaftarController::class, 'generateNim'])->name('pencarian.generate-nim');
         Route::get('/sinkron-pembayaran', [SinkronPembayaranController::class, 'index'])->name('sinkron-pembayaran');
         Route::post('/sinkron-pembayaran', [SinkronPembayaranController::class, 'sinkron'])->name('sinkron-pembayaran.proses');
+        Route::get('/import', [ImportMahasiswaBaruController::class, 'index'])->name('import');
+        Route::get('/import/template', [ImportMahasiswaBaruController::class, 'template'])->name('import.template');
+        Route::post('/import/preview', [ImportMahasiswaBaruController::class, 'preview'])->name('import.preview');
+        Route::post('/import/simpan', [ImportMahasiswaBaruController::class, 'simpan'])->name('import.simpan');
+        Route::post('/import/batal', [ImportMahasiswaBaruController::class, 'batal'])->name('import.batal');
     });
 
     Route::resource('kurikulum', KurikulumController::class)->except('show');
