@@ -11,7 +11,7 @@
         <div class="card-body">
             @php
                 // Label filter aktif untuk ditampilkan sebagai chip yang bisa dihapus satu per satu
-                $labelStatus = ['belum' => 'Belum di master', 'sudah' => 'Sudah di master'];
+                $labelStatus = ['belum' => 'Belum di master', 'sudah' => 'Sudah di master', 'cek' => 'Perlu dicek (NIM bentrok/beda)'];
                 $filterAktif = collect([
                     'prodi' => ['bx-book-open', isset($filter['prodi']) ? $prodi[$filter['prodi']]->nama ?? $filter['prodi'] : null],
                     'kelas' => ['bx-chalkboard', isset($filter['kelas']) ? $kelas[$filter['kelas']]->nama ?? $filter['kelas'] : null],
@@ -91,22 +91,28 @@
             </form>
 
             <div class="row g-3 mb-4">
-                <div class="col-4">
+                <div class="col-6 col-md-3">
                     <div class="border rounded-3 p-3 h-100">
                         <div class="text-muted small">Total ber-NIM</div>
                         <div class="fs-4 fw-bold">{{ $ringkasan['total'] }}</div>
                     </div>
                 </div>
-                <div class="col-4">
+                <div class="col-6 col-md-3">
                     <div class="border rounded-3 p-3 h-100">
                         <div class="text-muted small">Belum di master</div>
                         <div class="fs-4 fw-bold text-warning">{{ $ringkasan['belum'] }}</div>
                     </div>
                 </div>
-                <div class="col-4">
+                <div class="col-6 col-md-3">
                     <div class="border rounded-3 p-3 h-100">
                         <div class="text-muted small">Sudah di master</div>
                         <div class="fs-4 fw-bold text-success">{{ $ringkasan['di_master'] }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded-3 p-3 h-100">
+                        <div class="text-muted small">Perlu dicek</div>
+                        <div class="fs-4 fw-bold text-danger">{{ $ringkasan['cek'] }}</div>
                     </div>
                 </div>
             </div>
@@ -145,7 +151,8 @@
                                     </th>
                                 @endcan
                                 <th>No</th>
-                                <th>NIM</th>
+                                <th>NIM PMB</th>
+                                <th>NPM SIADE</th>
                                 <th>Nama</th>
                                 <th>Program Studi</th>
                                 <th>Kelas</th>
@@ -161,7 +168,7 @@
                                 <tr>
                                     @can('mahasiswa.sync.import')
                                         <td class="text-center">
-                                            @if (!$item->di_master)
+                                            @if ($item->status_master === 'belum')
                                                 <input type="checkbox" class="form-check-input cek-mhs"
                                                     value="{{ $item->nomor }}" aria-label="Pilih {{ $item->nama_daftar }}">
                                             @endif
@@ -169,6 +176,31 @@
                                     @endcan
                                     <td>{{ $loop->iteration }}</td>
                                     <td class="fw-semibold text-nowrap">{{ $item->nim }}</td>
+                                    <td class="text-nowrap">
+                                        @switch($item->status_master)
+                                            @case('sudah')
+                                                <span class="fw-semibold text-success">{{ $item->master->npm }}</span>
+                                                <div class="small text-muted">Sama dengan PMB</div>
+                                            @break
+
+                                            @case('bentrok')
+                                                <span class="fw-semibold text-danger">{{ $item->master->npm }}</span>
+                                                <div class="small text-danger" title="NPM ini di SIADE milik mahasiswa lain">
+                                                    Milik {{ $item->master->nama_mahasiswa }}</div>
+                                                @if ($item->master_lain)
+                                                    <div class="small text-muted">Pendaftar ini di SIADE: <strong>{{ $item->master_lain->npm }}</strong></div>
+                                                @endif
+                                            @break
+
+                                            @case('beda_nim')
+                                                <span class="fw-semibold text-warning-emphasis">{{ $item->master_lain->npm }}</span>
+                                                <div class="small text-muted">{{ $item->master_lain->nama_mahasiswa }}</div>
+                                            @break
+
+                                            @default
+                                                <span class="text-muted">-</span>
+                                        @endswitch
+                                    </td>
                                     <td>
                                         {{ $item->nama_daftar }}
                                         <div class="small text-muted">{{ $item->pmb }} &middot; {{ $item->nama_jalur }}</div>
@@ -177,11 +209,24 @@
                                     <td class="text-nowrap">{{ $item->nama_kelas ?: '-' }}</td>
                                     <td>{{ $item->jurusan ?: '-' }}</td>
                                     <td class="text-nowrap">
-                                        @if ($item->di_master)
-                                            <span class="badge bg-success-subtle text-success-emphasis">Sudah di master</span>
-                                        @else
-                                            <span class="badge bg-warning-subtle text-warning-emphasis">Belum di master</span>
-                                        @endif
+                                        @switch($item->status_master)
+                                            @case('sudah')
+                                                <span class="badge bg-success-subtle text-success-emphasis">Sudah di master</span>
+                                            @break
+
+                                            @case('bentrok')
+                                                <span class="badge bg-danger-subtle text-danger-emphasis"
+                                                    title="NIM PMB sudah dipakai mahasiswa lain di SIADE, ubah NIM PMB">NIM bentrok</span>
+                                            @break
+
+                                            @case('beda_nim')
+                                                <span class="badge bg-info-subtle text-info-emphasis"
+                                                    title="Pendaftar sudah ada di SIADE dengan NPM berbeda, samakan NIM PMB">NPM berbeda</span>
+                                            @break
+
+                                            @default
+                                                <span class="badge bg-warning-subtle text-warning-emphasis">Belum di master</span>
+                                        @endswitch
                                     </td>
                                     @canany(['mahasiswa.sync.update', 'mahasiswa.sync.generate-nim'])
                                         <td class="text-end text-nowrap">
@@ -190,12 +235,13 @@
                                             @else
                                                 @can('mahasiswa.sync.update')
                                                     <button type="button" class="btn btn-warning btn-sm btn-edit"
-                                                        title="Edit kelas, prodi, jurusan" data-bs-toggle="modal"
+                                                        title="Edit NIM, kelas, prodi, jurusan" data-bs-toggle="modal"
                                                         data-bs-target="#modal-edit"
                                                         data-url="{{ route('mahasiswa.sync.update', $item->nomor_pmb) }}"
                                                         data-nama="{{ $item->nama_daftar }}" data-nim="{{ $item->nim }}"
                                                         data-prodi="{{ $item->prodi }}" data-kelas="{{ $item->kelas }}"
-                                                        data-jurusan="{{ $item->jurusan }}">
+                                                        data-jurusan="{{ $item->jurusan }}"
+                                                        data-npm-siade="{{ $item->master_lain->npm ?? '' }}">
                                                         <i class='bx bx-edit me-0'></i>
                                                     </button>
                                                 @endcan
@@ -236,6 +282,14 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body row g-3">
+                        <div class="col-12">
+                            <label class="form-label" for="edit-nim">NIM di PMB</label>
+                            <input type="text" name="nim" id="edit-nim" class="form-control text-uppercase"
+                                maxlength="20" pattern="[A-Za-z0-9]{5,20}" autocomplete="off">
+                            <div class="form-text" id="edit-nim-info">Ubah manual bila NIM bentrok atau perlu disamakan
+                                dengan SIADE.</div>
+                            <button type="button" class="btn btn-link btn-sm p-0 d-none" id="edit-samakan"></button>
+                        </div>
                         <div class="col-12">
                             <label class="form-label" for="edit-prodi">Program Studi</label>
                             <select name="prodi" id="edit-prodi" class="form-select" required>
@@ -428,7 +482,19 @@
                 $('#edit-peringatan').toggleClass('d-none', !berubah);
                 $('#edit-generate').prop('checked', berubah || $('#edit-generate').data('manual') === true)
                     .prop('disabled', berubah);
+                aturInputNim();
             }
+
+            // NIM manual tidak dipakai jika NIM akan digenerate ulang
+            function aturInputNim() {
+                const generate = $('#edit-generate').prop('checked');
+                $('#edit-nim').prop('readonly', generate);
+                if (generate) {
+                    $('#edit-nim').val(nimAwal);
+                }
+            }
+
+            let nimAwal = '';
 
             // Isi modal dari tombol edit yang diklik (event delegation agar tetap jalan setelah paging DataTables)
             $(document).on('click', '.btn-edit', function() {
@@ -436,6 +502,11 @@
                 prodiAwal = String(b.prodi);
                 $('#form-edit').attr('action', b.url);
                 $('#edit-info').text(`${b.nim} · ${b.nama}`);
+                nimAwal = String(b.nim);
+                $('#edit-nim').val(nimAwal);
+                const npmSiade = b.npmSiade ? String(b.npmSiade) : '';
+                $('#edit-samakan').toggleClass('d-none', !npmSiade).data('npm', npmSiade)
+                    .html(`<i class='bx bx-link'></i> Samakan dengan NPM SIADE: ${npmSiade}`);
                 $('#edit-prodi').val(prodiAwal);
                 $('#edit-kelas').val(String(b.kelas));
                 const jurusan = b.jurusan ? String(b.jurusan) : '';
@@ -454,6 +525,12 @@
             });
             $('#edit-generate').on('change', function() {
                 $(this).data('manual', this.checked);
+                aturInputNim();
+            });
+            $('#edit-samakan').on('click', function() {
+                $('#edit-generate').data('manual', false).prop('checked', false);
+                aturInputNim();
+                $('#edit-nim').val($(this).data('npm'));
             });
 
             // Checkbox disabled tidak ikut terkirim; prodi berubah tetap memicu generate di server

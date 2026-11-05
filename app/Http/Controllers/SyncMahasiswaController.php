@@ -37,19 +37,17 @@ class SyncMahasiswaController extends Controller
             return redirect()->route('dashboard')->with('error', 'Gagal memuat data. Periksa koneksi Anda.');
         }
 
-        // Tandai yang NIM-nya sudah ada di master_mahasiswa lokal
-        $diMaster = DB::table('master_mahasiswa')
-            ->whereIn('npm', $pendaftar->pluck('nim'))
-            ->pluck('npm')
-            ->flip();
+        // Cocokkan dengan master_mahasiswa SIADE (NPM sama, bentrok, atau orang sama dengan NPM lain)
+        $this->penmaru->cocokkanDenganMaster($pendaftar, $d['tahun']);
         foreach ($pendaftar as $p) {
-            $p->di_master = isset($diMaster[$p->nim]);
+            $p->di_master = $p->status_master === 'sudah';
         }
 
         $d['ringkasan'] = [
             'total' => $pendaftar->count(),
-            'di_master' => $pendaftar->where('di_master', true)->count(),
-            'belum' => $pendaftar->where('di_master', false)->count(),
+            'di_master' => $pendaftar->where('status_master', 'sudah')->count(),
+            'belum' => $pendaftar->where('status_master', 'belum')->count(),
+            'cek' => $pendaftar->whereIn('status_master', ['bentrok', 'beda_nim'])->count(),
         ];
 
         // Filter
@@ -57,8 +55,9 @@ class SyncMahasiswaController extends Controller
         $d['pendaftar'] = $pendaftar
             ->when($request->filled('prodi'), fn($c) => $c->where('prodi', $request->prodi))
             ->when($request->filled('kelas'), fn($c) => $c->where('kelas', (int) $request->kelas))
-            ->when($request->status === 'belum', fn($c) => $c->where('di_master', false))
-            ->when($request->status === 'sudah', fn($c) => $c->where('di_master', true))
+            ->when($request->status === 'belum', fn($c) => $c->where('status_master', 'belum'))
+            ->when($request->status === 'sudah', fn($c) => $c->where('status_master', 'sudah'))
+            ->when($request->status === 'cek', fn($c) => $c->whereIn('status_master', ['bentrok', 'beda_nim']))
             ->values();
 
         $d['nama_prodi_lokal'] = Prodi::pluck('nama_program_studi_idn', 'kode_program_studi');
@@ -80,6 +79,9 @@ class SyncMahasiswaController extends Controller
             'prodi' => ['required', Rule::in($prodi->keys())],
             'kelas' => ['required', Rule::in($kelas->keys())],
             'jurusan' => ['nullable', 'string', 'max:200'],
+            'nim' => ['nullable', 'regex:/^[A-Za-z0-9]{5,20}$/'],
+        ], [
+            'nim.regex' => 'NIM hanya boleh huruf dan angka, 5–20 karakter.',
         ]);
         $validator->after(function ($v) use ($request, $kelas) {
             $k = $kelas->get((int) $request->kelas);
@@ -91,15 +93,26 @@ class SyncMahasiswaController extends Controller
             return back()->with('error', '⚠ Periksa kembali isian form Anda. ' . $validator->errors()->first());
         }
 
+        if ($this->terkunci($pmb)) {
+            return back()->with('error', "Gagal memperbarui data. NIM {$pmb->nim} sudah ada di master mahasiswa atas nama pendaftar ini.");
+        }
+
         $prodiBerubah = (string) $pmb->prodi !== (string) $request->prodi;
         $generate = $request->boolean('generate_nim') || $prodiBerubah;
 
-        if ($generate && $this->sudahDiMaster($pmb->nim)) {
-            return back()->with('error', "Gagal memperbarui data. NIM {$pmb->nim} sudah ada di master mahasiswa, prodi/NIM tidak bisa diubah dari sini.");
+        // NIM manual hanya dipakai bila tidak generate ulang
+        $nimManual = strtoupper(trim((string) $request->nim));
+        $nimManual = !$generate && $nimManual !== '' && $nimManual !== $pmb->nim ? $nimManual : null;
+        if ($nimManual && ($pesanNim = $this->cekNimManual($pmb, $nimManual))) {
+            return back()->with('error', '⚠ Periksa kembali isian form Anda. ' . $pesanNim);
         }
 
         try {
             $hasil = $this->penmaru->perbarui($pmb->nomor, $request->only(['prodi', 'kelas', 'jurusan']), $generate);
+            if ($nimManual) {
+                $this->penmaru->ubahNim($pmb->nomor, $nimManual);
+                $hasil = ['nim_lama' => $pmb->nim, 'nim_baru' => $nimManual];
+            }
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal memperbarui data. Coba lagi.');
         }
@@ -145,8 +158,8 @@ class SyncMahasiswaController extends Controller
             return back()->with('error', 'Data pendaftar tidak ditemukan.');
         }
 
-        if ($this->sudahDiMaster($pmb->nim)) {
-            return back()->with('error', "Gagal memperbarui data. NIM {$pmb->nim} sudah ada di master mahasiswa.");
+        if ($this->terkunci($pmb)) {
+            return back()->with('error', "Gagal memperbarui data. NIM {$pmb->nim} sudah ada di master mahasiswa atas nama pendaftar ini.");
         }
 
         try {
@@ -175,8 +188,32 @@ class SyncMahasiswaController extends Controller
         return $pmb;
     }
 
-    private function sudahDiMaster(?string $nim): bool
+    /**
+     * Terkunci jika NIM penmaru sudah ada di master dan dipakai oleh orang yang sama.
+     * NIM yang bentrok dengan mahasiswa lain tetap boleh diubah agar bisa diperbaiki.
+     */
+    private function terkunci($pmb): bool
     {
-        return $nim && DB::table('master_mahasiswa')->where('npm', $nim)->exists();
+        $master = $pmb->nim ? DB::table('master_mahasiswa')->where('npm', $pmb->nim)->first() : null;
+
+        return $master && $this->penmaru->orangSama($pmb, $master);
+    }
+
+    /**
+     * Validasi NIM yang diketik manual. Mengembalikan pesan error, atau null jika boleh dipakai.
+     * NIM yang sudah ada di master hanya boleh dipakai jika milik orang yang sama (menyamakan dengan SIADE).
+     */
+    private function cekNimManual($pmb, string $nim): ?string
+    {
+        if ($this->penmaru->nimDipakaiPendaftarLain($nim, $pmb->nomor)) {
+            return "NIM {$nim} sudah dipakai pendaftar lain di PMB.";
+        }
+
+        $master = DB::table('master_mahasiswa')->where('npm', $nim)->first();
+        if ($master && !$this->penmaru->orangSama($pmb, $master)) {
+            return "NIM {$nim} sudah dipakai {$master->nama_mahasiswa} di master mahasiswa.";
+        }
+
+        return null;
     }
 }

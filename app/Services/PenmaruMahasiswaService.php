@@ -48,11 +48,111 @@ class PenmaruMahasiswaService
             ->orderBy('nim')
             ->get([
                 // nomor = id pmb_prodi (dipakai import), nomor_pmb = pmb.nomor (dipakai edit & generate NIM)
-                'nomor', 'nomor_pmb', 'pmb', 'nim', 'nim_num', 'nama_daftar', 'prodi', 'kelas', 'nama_kelas',
-                'jurusan', 'sekolah_asal', 'pmb_gelombang', 'nama_jalur', 'hp_daftar', 'email',
+                'nomor', 'nomor_pmb', 'pmb', 'nim', 'nim_num', 'nama', 'nama_daftar', 'nik', 'prodi', 'kelas',
+                'nama_kelas', 'jurusan', 'sekolah_asal', 'pmb_gelombang', 'nama_jalur', 'hp_daftar', 'email',
             ])
             ->unique('pmb')
             ->values();
+    }
+
+    /**
+     * Cocokkan pendaftar dengan master_mahasiswa SIADE dan isi properti berikut pada tiap item:
+     * - master        : data master yang NPM-nya sama dengan NIM penmaru (null jika tidak ada)
+     * - master_lain   : data master milik orang yang sama (NIK/nama) tetapi NPM-nya berbeda
+     * - status_master : 'sudah'    = NIM ada di master dan orangnya sama
+     *                   'bentrok'  = NIM ada di master tetapi dipakai mahasiswa lain
+     *                   'beda_nim' = orangnya sudah ada di master dengan NPM lain
+     *                   'belum'    = belum ada di master
+     */
+    public function cocokkanDenganMaster(Collection $pendaftar, string $tahun): Collection
+    {
+        $kolom = ['id', 'npm', 'nama_mahasiswa', 'nik', 'kode_program_studi', 'tahun_angkatan'];
+
+        $byNpm = DB::table('master_mahasiswa')->whereIn('npm', $pendaftar->pluck('nim'))->get($kolom)->keyBy('npm');
+
+        $nik = $pendaftar->pluck('nik')->map(fn($n) => trim((string) $n))->filter()->unique();
+        $byNik = DB::table('master_mahasiswa')->whereIn('nik', $nik)->get($kolom)->groupBy('nik');
+
+        // Kandidat pencocokan nama: master seangkatan (contoh: UMJA2026 -> 2026x)
+        $angkatan = DB::table('master_mahasiswa')
+            ->where('tahun_angkatan', 'like', '20' . substr($tahun, 6, 2) . '%')
+            ->get($kolom);
+
+        foreach ($pendaftar as $p) {
+            $p->master = $byNpm[$p->nim] ?? null;
+            $p->master_lain = null;
+
+            if ($p->master && $this->orangSama($p, $p->master)) {
+                $p->status_master = 'sudah';
+                continue;
+            }
+
+            // Cari data diri yang sama di master dengan NPM berbeda: NIK dulu, lalu nama + prodi
+            $nikP = trim((string) $p->nik);
+            $p->master_lain = ($nikP !== '' ? ($byNik[$nikP] ?? collect())->first(fn($m) => $m->npm !== $p->nim) : null)
+                ?? $angkatan->first(fn($m) => $m->npm !== $p->nim
+                    && (string) $m->kode_program_studi === (string) $p->prodi
+                    && $this->namaSama($p->nama ?: $p->nama_daftar, $m->nama_mahasiswa));
+
+            $p->status_master = $p->master ? 'bentrok' : ($p->master_lain ? 'beda_nim' : 'belum');
+        }
+
+        return $pendaftar;
+    }
+
+    /**
+     * Pendaftar dan data master dianggap orang yang sama jika NIK sama,
+     * atau (bila salah satu NIK kosong) namanya sama setelah dinormalisasi.
+     */
+    public function orangSama($pendaftar, $master): bool
+    {
+        $nikP = trim((string) ($pendaftar->nik ?? ''));
+        $nikM = trim((string) ($master->nik ?? ''));
+        if ($nikP !== '' && $nikM !== '') {
+            return $nikP === $nikM;
+        }
+
+        return $this->namaSama($pendaftar->nama ?: ($pendaftar->nama_daftar ?? ''), $master->nama_mahasiswa);
+    }
+
+    private function namaSama(?string $a, ?string $b): bool
+    {
+        $norm = fn($s) => trim(preg_replace('/\s+/', ' ', preg_replace('/[^A-Z ]/', ' ', mb_strtoupper((string) $s))));
+        $a = $norm($a);
+        $b = $norm($b);
+
+        return $a !== '' && $a === $b;
+    }
+
+    /**
+     * Ubah NIM pendaftar secara manual. nim_num ikut disesuaikan bila NIM mengikuti
+     * pola jenjang + tahun + kode prodi + nomor urut, agar generate berikutnya tetap berurutan.
+     */
+    public function ubahNim(int $nomor, string $nim): void
+    {
+        $this->db()->transaction(function () use ($nomor, $nim) {
+            $pmb = $this->db()->table('pmb')->where('nomor', $nomor)->lockForUpdate()->first();
+            $prodi = $this->daftarProdi()->get($pmb->prodi);
+
+            $data = ['nim' => $nim];
+            if ($prodi) {
+                $awalan = $prodi->jenjang . substr($pmb->pmb, 6, 2) . $prodi->nim_prodi_kode;
+                $sisa = substr($nim, strlen($awalan));
+                if (str_starts_with($nim, $awalan) && $sisa !== '' && ctype_digit($sisa)) {
+                    $data['nim_num'] = (int) $sisa;
+                }
+            }
+
+            $this->db()->table('pmb')->where('nomor', $nomor)->update($data);
+        });
+    }
+
+    /**
+     * Apakah NIM sudah dipakai pendaftar lain di penmaru.
+     */
+    public function nimDipakaiPendaftarLain(string $nim, int $nomor): bool
+    {
+        return $this->db()->table('pmb')->where('nim', $nim)->where('nomor', '!=', $nomor)->exists();
     }
 
     public function pendaftar(int $nomor)
