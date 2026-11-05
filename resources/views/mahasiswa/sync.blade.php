@@ -153,7 +153,8 @@
                                 <th>No</th>
                                 <th>NIM PMB</th>
                                 <th>NPM SIADE</th>
-                                <th>Nama</th>
+                                <th>Nama PMB</th>
+                                <th>Nama SIADE</th>
                                 <th>Program Studi</th>
                                 <th>Kelas</th>
                                 <th>Jurusan Sekolah</th>
@@ -185,8 +186,7 @@
 
                                             @case('bentrok')
                                                 <span class="fw-semibold text-danger">{{ $item->master->npm }}</span>
-                                                <div class="small text-danger" title="NPM ini di SIADE milik mahasiswa lain">
-                                                    Milik {{ $item->master->nama_mahasiswa }}</div>
+                                                <div class="small text-danger">Dipakai mahasiswa lain</div>
                                                 @if ($item->master_lain)
                                                     <div class="small text-muted">Pendaftar ini di SIADE: <strong>{{ $item->master_lain->npm }}</strong></div>
                                                 @endif
@@ -194,7 +194,7 @@
 
                                             @case('beda_nim')
                                                 <span class="fw-semibold text-warning-emphasis">{{ $item->master_lain->npm }}</span>
-                                                <div class="small text-muted">{{ $item->master_lain->nama_mahasiswa }}</div>
+                                                <div class="small text-muted">Beda dengan PMB</div>
                                             @break
 
                                             @default
@@ -204,6 +204,17 @@
                                     <td>
                                         {{ $item->nama_daftar }}
                                         <div class="small text-muted">{{ $item->pmb }} &middot; {{ $item->nama_jalur }}</div>
+                                    </td>
+                                    <td>
+                                        @if ($item->nama_siade)
+                                            <span class="{{ $item->nama_beda ? 'text-danger fw-semibold' : '' }}">{{ $item->nama_siade }}</span>
+                                            @if ($item->nama_beda)
+                                                <div><span class="badge bg-danger-subtle text-danger-emphasis"
+                                                        title="Nama di SIADE tidak sama dengan nama di PMB">Nama berbeda</span></div>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
                                     </td>
                                     <td>{{ $prodi[$item->prodi]->nama ?? ($nama_prodi_lokal[$item->prodi] ?? $item->prodi) }}</td>
                                     <td class="text-nowrap">{{ $item->nama_kelas ?: '-' }}</td>

@@ -97,6 +97,13 @@ class PenmaruMahasiswaService
             $p->status_master = $p->master ? 'bentrok' : ($p->master_lain ? 'beda_nim' : 'belum');
         }
 
+        // Nama di SIADE untuk dibandingkan dengan nama di PMB
+        foreach ($pendaftar as $p) {
+            $m = $p->master ?? $p->master_lain;
+            $p->nama_siade = $m->nama_mahasiswa ?? null;
+            $p->nama_beda = $m && !$this->namaSama($p->nama ?: $p->nama_daftar, $m->nama_mahasiswa);
+        }
+
         return $pendaftar;
     }
 
