@@ -205,13 +205,22 @@ class SyncMahasiswaController extends Controller
      */
     private function cekNimManual($pmb, string $nim): ?string
     {
-        if ($this->penmaru->nimDipakaiPendaftarLain($nim, $pmb->nomor)) {
-            return "NIM {$nim} sudah dipakai pendaftar lain di PMB.";
+        $master = DB::table('master_mahasiswa')->where('npm', $nim)->first();
+        if ($master) {
+            // Menyamakan dengan NPM SIADE milik orang yang sama selalu boleh: SIADE jadi acuan,
+            // pendaftar PMB lain yang memakai NIM ini akan tampil "NIM bentrok" dan bisa diperbaiki terpisah.
+            return $this->penmaru->orangSama($pmb, $master)
+                ? null
+                : "NIM {$nim} sudah dipakai {$master->nama_mahasiswa} di master mahasiswa.";
         }
 
-        $master = DB::table('master_mahasiswa')->where('npm', $nim)->first();
-        if ($master && !$this->penmaru->orangSama($pmb, $master)) {
-            return "NIM {$nim} sudah dipakai {$master->nama_mahasiswa} di master mahasiswa.";
+        $lain = $this->penmaru->pendaftarLainPemakaiNim($nim, $pmb->nomor);
+        if ($lain) {
+            // Pendaftaran ganda orang yang sama tidak dianggap bentrok
+            $samaOrang = $this->penmaru->orangSama($pmb, (object) ['nik' => $lain->nik, 'nama_mahasiswa' => $lain->nama]);
+            if (!$samaOrang) {
+                return "NIM {$nim} sudah dipakai {$lain->nama} ({$lain->pmb}) di PMB.";
+            }
         }
 
         return null;

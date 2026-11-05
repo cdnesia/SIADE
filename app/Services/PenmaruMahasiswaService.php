@@ -108,15 +108,16 @@ class PenmaruMahasiswaService
     }
 
     /**
-     * Pendaftar dan data master dianggap orang yang sama jika NIK sama,
-     * atau (bila salah satu NIK kosong) namanya sama setelah dinormalisasi.
+     * Pendaftar dan data master dianggap orang yang sama jika NIK sama
+     * ATAU namanya sama setelah dinormalisasi (NIK di salah satu sistem sering salah/kosong).
+     * Aturan ini dipakai konsisten untuk penandaan status maupun validasi simpan NIM.
      */
     public function orangSama($pendaftar, $master): bool
     {
         $nikP = trim((string) ($pendaftar->nik ?? ''));
         $nikM = trim((string) ($master->nik ?? ''));
-        if ($nikP !== '' && $nikM !== '') {
-            return $nikP === $nikM;
+        if ($nikP !== '' && $nikP === $nikM) {
+            return true;
         }
 
         return $this->namaSama($pendaftar->nama ?: ($pendaftar->nama_daftar ?? ''), $master->nama_mahasiswa);
@@ -155,11 +156,17 @@ class PenmaruMahasiswaService
     }
 
     /**
-     * Apakah NIM sudah dipakai pendaftar lain di penmaru.
+     * Pendaftar aktif lain di penmaru yang memakai NIM ini (null jika tidak ada).
+     * Pendaftaran terhapus (na != 'N') dan data uji (EXCLUDE) diabaikan.
      */
-    public function nimDipakaiPendaftarLain(string $nim, int $nomor): bool
+    public function pendaftarLainPemakaiNim(string $nim, int $nomor)
     {
-        return $this->db()->table('pmb')->where('nim', $nim)->where('nomor', '!=', $nomor)->exists();
+        return $this->db()->table('pmb')
+            ->where('nim', $nim)
+            ->where('nomor', '!=', $nomor)
+            ->where('na', 'N')
+            ->whereNotIn('pmb', MahasiswaBaruController::EXCLUDE)
+            ->first(['nomor', 'pmb', 'nama', 'nik']);
     }
 
     public function pendaftar(int $nomor)
