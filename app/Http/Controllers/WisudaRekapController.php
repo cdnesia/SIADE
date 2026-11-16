@@ -302,11 +302,11 @@ class WisudaRekapController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $redirect->with('error', '✕ Gagal menyimpan data. Coba lagi.');
+            return $this->balas($request, $redirect, null, '✕ Gagal menyimpan data. Coba lagi.', 500);
         }
 
         if ($nilaiTersimpan === 0 && $krsTersimpan === 0 && empty($gagal)) {
-            return $redirect->with('error', '⚠ Tidak ada isian yang disimpan. Isi nilai atau centang KRS yang ingin ditambahkan.');
+            return $this->balas($request, $redirect, null, '⚠ Tidak ada isian yang disimpan. Isi nilai atau centang KRS yang ingin ditambahkan.', 422);
         }
 
         $pesan = [];
@@ -316,11 +316,25 @@ class WisudaRekapController extends Controller
         if ($krsTersimpan) {
             $pesan[] = "$krsTersimpan KRS ditambahkan";
         }
-        if ($pesan) {
-            $redirect->with('success', '✓ Data berhasil disimpan ('.implode(', ', $pesan).') untuk NPM '.$valid['npm']);
+        $sukses = $pesan ? '✓ Data berhasil disimpan ('.implode(', ', $pesan).') untuk NPM '.$valid['npm'] : null;
+        $galat = $gagal ? '✕ Sebagian gagal: '.implode(' ', array_unique($gagal)) : null;
+
+        return $this->balas($request, $redirect, $sukses, $galat, $sukses ? 200 : 422);
+    }
+
+    /**
+     * Jawaban untuk permintaan AJAX (JSON) atau form biasa (redirect + flash).
+     */
+    private function balas(Request $request, $redirect, ?string $sukses, ?string $galat, int $status)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['success' => $sukses !== null, 'message' => $sukses, 'error' => $galat], $status);
         }
-        if ($gagal) {
-            $redirect->with('error', '✕ Sebagian gagal: '.implode(' ', array_unique($gagal)));
+        if ($sukses) {
+            $redirect->with('success', $sukses);
+        }
+        if ($galat) {
+            $redirect->with('error', $galat);
         }
 
         return $redirect;

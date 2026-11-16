@@ -9,6 +9,9 @@
         /* Anggota dobel yang tidak diambil: dipudarkan, tidak dihitung ke IPK */
         #tabel-transkrip tr.tidak-diambil > td { opacity: .55; }
         #tabel-transkrip tr.tidak-diambil .nama-mk { text-decoration: line-through; }
+        /* Saat area data dimuat ulang lewat AJAX */
+        #area-data { transition: opacity .15s; }
+        #area-data.memuat { opacity: .5; pointer-events: none; }
         .badge-titik::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 5px; vertical-align: middle; }
         .label-pilih { cursor: pointer; user-select: none; }
         .kartu-angka { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
@@ -108,6 +111,8 @@
             $grupTerakhir = null;
         @endphp
 
+        {{-- Area data: dimuat ulang lewat AJAX setelah tambah/ubah/hapus tanpa reload halaman --}}
+        <div id="area-data">
         {{-- Identitas + ringkasan --}}
         <div class="card">
             <div class="card-body">
@@ -221,8 +226,8 @@
                     </span>
                     Klik <strong>Ambil</strong> pada baris yang ingin dipakai di transkrip.
                 </div>
-                <form action="{{ route('wisuda.transkrip.reset') }}" method="post" class="ms-2"
-                    onsubmit="return confirm('Kembalikan semua pilihan matakuliah dobel ke pilihan otomatis (nilai tertinggi)?')">
+                <form action="{{ route('wisuda.transkrip.reset') }}" method="post" class="ms-2 form-ajax"
+                    data-konfirmasi="Kembalikan semua pilihan matakuliah dobel ke pilihan otomatis (nilai tertinggi)?">
                     @csrf
                     <input type="hidden" name="npm" value="{{ $mhs->npm }}">
                     <input type="hidden" name="angkatan" value="{{ $angkatan }}">
@@ -515,11 +520,12 @@
                 @endif
             </div>
         @endif
+        </div>{{-- /#area-data --}}
 
         {{-- Modal isi nilai (untuk KRS yang nilainya kosong) --}}
         <div class="modal fade" id="modal-nilai" tabindex="-1" aria-labelledby="judul-modal-nilai" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <form action="{{ route('wisuda.transkrip.nilai') }}" method="post" class="modal-content form-proses" novalidate>
+                <form action="{{ route('wisuda.transkrip.nilai') }}" method="post" class="modal-content form-ajax" novalidate>
                     @csrf
                     <input type="hidden" name="npm" value="{{ $mhs->npm }}">
                     <input type="hidden" name="angkatan" value="{{ $angkatan }}">
@@ -556,7 +562,7 @@
         {{-- Modal tambah KRS untuk MK kurikulum yang belum diambil --}}
         <div class="modal fade" id="modal-krs" tabindex="-1" aria-labelledby="judul-modal-krs" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <form action="{{ route('wisuda.transkrip.krs') }}" method="post" class="modal-content form-proses" novalidate>
+                <form action="{{ route('wisuda.transkrip.krs') }}" method="post" class="modal-content form-ajax" novalidate>
                     @csrf
                     <input type="hidden" name="npm" value="{{ $mhs->npm }}">
                     <input type="hidden" name="angkatan" value="{{ $angkatan }}">
@@ -598,7 +604,7 @@
         {{-- Modal konfirmasi hapus matakuliah dobel --}}
         <div class="modal fade" id="modal-hapus" tabindex="-1" aria-labelledby="judul-modal-hapus" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <form action="{{ route('wisuda.transkrip.hapus') }}" method="post" class="modal-content" id="form-hapus">
+                <form action="{{ route('wisuda.transkrip.hapus') }}" method="post" class="modal-content form-ajax" id="form-hapus">
                     @csrf
                     @method('DELETE')
                     <input type="hidden" name="npm" value="{{ $mhs->npm }}">
@@ -639,8 +645,9 @@
                 const npm = @json($data['mahasiswa']->npm);
                 const urlPilih = @json(route('wisuda.transkrip.pilih'));
                 const csrf = @json(csrf_token());
-                const tbody = document.querySelector('#tabel-transkrip tbody');
-                const semuaBaris = () => tbody.querySelectorAll('tr[data-krs]');
+                const skala = @json($skala_nilai);
+                const area = document.getElementById('area-data');
+                const $id = (id) => document.getElementById(id);
 
                 function toast(tipe, pesan) {
                     Lobibox.notify(tipe, {
@@ -651,54 +658,124 @@
                     });
                 }
 
-                // ---- Filter & pencarian ----
-                const filter = document.getElementById('filter-transkrip');
-                const cari = document.getElementById('cari-transkrip');
-
+                // ---- Filter & pencarian (delegasi, karena isi area diganti saat dimuat ulang) ----
                 function terapkanFilter() {
+                    const filter = $id('filter-transkrip');
+                    const cari = $id('cari-transkrip');
+                    if (!filter) return;
                     const f = filter.value;
                     const q = cari.value.trim().toLowerCase();
+                    const baris = area.querySelectorAll('#tabel-transkrip tbody tr[data-krs]');
                     let tampil = 0;
-                    semuaBaris().forEach(tr => {
-                        const cocokFilter = f === 'semua' || tr.dataset.kategori.split(' ').includes(f);
-                        const cocokCari = !q || tr.dataset.cari.includes(q);
-                        const lihat = cocokFilter && cocokCari;
+                    baris.forEach(tr => {
+                        const lihat = (f === 'semua' || tr.dataset.kategori.split(' ').includes(f)) && (!q || tr.dataset.cari.includes(q));
                         tr.classList.toggle('d-none', !lihat);
                         if (lihat) tampil++;
                     });
-                    const total = semuaBaris().length;
-                    document.getElementById('baris-kosong-filter').classList.toggle('d-none', tampil > 0 || total === 0);
-                    document.getElementById('info-jumlah-baris').textContent = `Menampilkan ${tampil} dari ${total} data`;
+                    $id('baris-kosong-filter').classList.toggle('d-none', tampil > 0 || baris.length === 0);
+                    $id('info-jumlah-baris').textContent = `Menampilkan ${tampil} dari ${baris.length} data`;
                 }
-                filter.addEventListener('change', terapkanFilter);
-                cari.addEventListener('input', terapkanFilter);
-                document.getElementById('reset-filter').addEventListener('click', () => {
-                    filter.value = 'semua';
-                    cari.value = '';
+                area.addEventListener('change', (e) => { if (e.target.id === 'filter-transkrip') terapkanFilter(); });
+                area.addEventListener('input', (e) => { if (e.target.id === 'cari-transkrip') terapkanFilter(); });
+                area.addEventListener('click', (e) => {
+                    if (e.target.id !== 'reset-filter') return;
+                    $id('filter-transkrip').value = 'semua';
+                    $id('cari-transkrip').value = '';
                     terapkanFilter();
                 });
 
+                // ---- Muat ulang area data tanpa reload halaman ----
+                async function muatUlang() {
+                    const filterLama = $id('filter-transkrip')?.value;
+                    const cariLama = $id('cari-transkrip')?.value;
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('segarkan'); // jangan ambil ulang Feeder setiap simpan
+                    area.classList.add('memuat');
+                    try {
+                        const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                        if (!resp.ok) throw new Error();
+                        const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
+                        const baru = doc.getElementById('area-data');
+                        if (!baru) throw new Error();
+                        area.innerHTML = baru.innerHTML;
+                        const filter = $id('filter-transkrip');
+                        if (filter && [...filter.options].some(o => o.value === filterLama)) filter.value = filterLama;
+                        if ($id('cari-transkrip')) $id('cari-transkrip').value = cariLama || '';
+                        terapkanFilter();
+                    } catch (err) {
+                        toast('error', '✕ Gagal memuat data. Periksa koneksi Anda.');
+                    } finally {
+                        area.classList.remove('memuat');
+                    }
+                }
+
+                // ---- Kirim form (isi/perbaiki nilai, tambah KRS, hapus, reset) lewat AJAX ----
+                async function kirim(form) {
+                    const btn = form.querySelector('button[type="submit"]');
+                    const teksBtn = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+                    try {
+                        const resp = await fetch(form.action, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body: new FormData(form),
+                        });
+                        const res = await resp.json().catch(() => ({}));
+                        if (resp.status === 422 && res.errors) {
+                            toast('warning', '⚠ Periksa kembali isian form Anda.');
+                            return;
+                        }
+                        if (!resp.ok || !res.success) {
+                            toast('error', res.message || '✕ Gagal memproses data. Coba lagi.');
+                            return;
+                        }
+                        const modal = form.closest('.modal');
+                        if (modal) bootstrap.Modal.getOrCreateInstance(modal).hide();
+                        toast('success', res.message);
+                        await muatUlang();
+                    } catch (err) {
+                        toast('error', '✕ Gagal memproses data. Periksa koneksi Anda.');
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = teksBtn;
+                    }
+                }
+
+                document.addEventListener('submit', (e) => {
+                    const form = e.target.closest('.form-ajax');
+                    if (!form) return;
+                    e.preventDefault();
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        toast('warning', '⚠ Periksa kembali isian form Anda.');
+                        return;
+                    }
+                    if (form.dataset.konfirmasi && !confirm(form.dataset.konfirmasi)) return;
+                    kirim(form);
+                });
+
                 // ---- Filter angkatan & kurikulum langsung memuat ulang ----
-                const formCek = document.getElementById('form-cek');
-                document.getElementById('angkatan')?.addEventListener('change', () => {
-                    const kur = document.getElementById('kurikulum');
+                const formCek = $id('form-cek');
+                $id('angkatan')?.addEventListener('change', () => {
+                    const kur = $id('kurikulum');
                     if (kur) kur.value = '';
                     formCek.submit();
                 });
-                document.getElementById('kurikulum')?.addEventListener('change', () => formCek.submit());
+                $id('kurikulum')?.addEventListener('change', () => formCek.submit());
                 @if ($galat_feeder && str_starts_with($galat_feeder, 'Gagal'))
                     toast('error', '✕ Gagal memuat data. Periksa koneksi Anda.');
                 @endif
 
-                // ---- Isi nilai & tambah KRS ----
-                const skala = @json($skala_nilai);
-                const modalNilai = new bootstrap.Modal(document.getElementById('modal-nilai'));
-                const modalKrs = new bootstrap.Modal(document.getElementById('modal-krs'));
-                const isi = (id, teks) => document.getElementById(id).textContent = teks;
+                // ---- Buka modal isi nilai / tambah KRS / hapus ----
+                const modalNilai = new bootstrap.Modal($id('modal-nilai'));
+                const modalKrs = new bootstrap.Modal($id('modal-krs'));
+                const modalHapus = new bootstrap.Modal($id('modal-hapus'));
+                const isi = (id, teks) => $id(id).textContent = teks;
 
                 // Pratinjau huruf/bobot saat nilai angka diketik
                 document.querySelectorAll('.input-nilai').forEach(input => {
-                    const target = document.getElementById(input.dataset.pratinjau);
+                    const target = $id(input.dataset.pratinjau);
                     const bawaan = target.textContent;
                     input.addEventListener('input', () => {
                         const n = parseFloat(input.value);
@@ -715,97 +792,49 @@
                     const tNilai = e.target.closest('.tombol-nilai');
                     if (tNilai) {
                         const d = tNilai.dataset;
-                        document.getElementById('nilai-krs-id').value = d.krs;
+                        $id('nilai-krs-id').value = d.krs;
                         isi('nilai-nama', d.nama); isi('nilai-kode', d.kode); isi('nilai-periode', d.periode);
                         // Mode perbaikan (nilai tidak lulus) vs isi nilai kosong
                         const perbaikan = !!d.lama;
-                        document.getElementById('judul-modal-nilai').innerHTML = perbaikan
+                        $id('judul-modal-nilai').innerHTML = perbaikan
                             ? '<i class="bx bx-revision me-1"></i>Perbaiki Nilai Tidak Lulus'
                             : '<i class="bx bx-edit-alt me-1"></i>Isi Nilai';
-                        document.getElementById('nilai-info-lama').classList.toggle('d-none', !perbaikan);
+                        $id('nilai-info-lama').classList.toggle('d-none', !perbaikan);
                         isi('nilai-lama', (d.lama || '') + (d.lamaAngka ? ` / ${d.lamaAngka}` : ''));
-                        const inp = document.getElementById('nilai-angka');
+                        const inp = $id('nilai-angka');
                         inp.value = ''; inp.dispatchEvent(new Event('input'));
                         modalNilai.show();
                         setTimeout(() => inp.focus(), 300);
+                        return;
                     }
                     const tKrs = e.target.closest('.tombol-krs');
                     if (tKrs) {
                         const d = tKrs.dataset;
-                        document.getElementById('krs-kode-mk').value = d.kode;
+                        $id('krs-kode-mk').value = d.kode;
                         isi('krs-nama', d.nama); isi('krs-kode', d.kode);
                         isi('krs-info', `${d.sks} SKS · semester ${d.semester}`);
-                        document.getElementById('krs-periode').value = '';
-                        const inp = document.getElementById('krs-nilai');
+                        $id('krs-periode').value = '';
+                        const inp = $id('krs-nilai');
                         inp.value = ''; inp.dispatchEvent(new Event('input'));
                         modalKrs.show();
-                    }
-                });
-
-                document.querySelectorAll('.form-proses').forEach(form => form.addEventListener('submit', (e) => {
-                    if (!form.checkValidity()) {
-                        e.preventDefault();
-                        form.reportValidity();
-                        toast('warning', '⚠ Periksa kembali isian form Anda.');
                         return;
                     }
-                    const btn = form.querySelector('button[type="submit"]');
-                    btn.disabled = true;
-                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
-                }));
-
-                // ---- Hapus matakuliah dobel (konfirmasi lewat modal) ----
-                const modalHapus = new bootstrap.Modal(document.getElementById('modal-hapus'));
-                tbody.addEventListener('click', (e) => {
-                    const tombol = e.target.closest('.tombol-hapus');
-                    if (!tombol) return;
-                    const d = tombol.dataset;
-                    document.getElementById('hapus-krs-id').value = d.krs;
-                    document.getElementById('hapus-nama').textContent = d.nama;
-                    document.getElementById('hapus-kode').textContent = d.kode;
-                    document.getElementById('hapus-periode').textContent = d.periode;
-                    document.getElementById('hapus-nilai').textContent = d.nilai;
-                    modalHapus.show();
-                });
-                document.getElementById('form-hapus').addEventListener('submit', (e) => {
-                    const btn = e.target.querySelector('button[type="submit"]');
-                    btn.disabled = true;
-                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menghapus...';
+                    const tHapus = e.target.closest('.tombol-hapus');
+                    if (tHapus) {
+                        const d = tHapus.dataset;
+                        $id('hapus-krs-id').value = d.krs;
+                        isi('hapus-nama', d.nama); isi('hapus-kode', d.kode);
+                        isi('hapus-periode', d.periode); isi('hapus-nilai', d.nilai);
+                        modalHapus.show();
+                    }
                 });
 
                 // ---- Pilih matakuliah dobel ----
-                function perbaruiTampilan(res) {
-                    const r = res.ringkasan;
-                    document.getElementById('r-ipk').textContent = Number(r.ipk).toFixed(2);
-                    document.getElementById('r-sks').textContent = r.total_sks;
-                    document.getElementById('r-mk').textContent = r.jumlah_mk;
-                    document.getElementById('f-ipk').textContent = Number(r.ipk).toFixed(2);
-                    document.getElementById('f-sks').textContent = r.total_sks;
-                    document.getElementById('f-mutu').textContent = Number(r.total_mutu).toFixed(2);
-                    document.getElementById('r-belum-dipilih').textContent = r.dobel_belum_dipilih;
-                    document.getElementById('info-belum-dipilih').classList.toggle('d-none', r.dobel_belum_dipilih === 0);
-
-                    const sudahDipilih = {};
-                    res.grup.forEach(g => g.krs_ids.forEach(id => sudahDipilih[id] = g.sudah_dipilih));
-
-                    res.baris.forEach(b => {
-                        const tr = tbody.querySelector(`tr[data-krs="${b.krs_id}"]`);
-                        if (!tr || tr.dataset.grup === '') return;
-                        tr.classList.toggle('tidak-diambil', !b.diambil);
-                        tr.querySelector('.pilih-dobel').checked = b.diambil;
-                        tr.querySelector('.status-dobel').innerHTML = !b.diambil
-                            ? '<span class="text-muted">Tidak dihitung</span>'
-                            : (sudahDipilih[b.krs_id]
-                                ? '<span class="text-success badge-titik">Dipilih</span>'
-                                : '<span class="text-danger badge-titik">Otomatis</span>');
-                    });
-                }
-
-                tbody.addEventListener('change', async (e) => {
+                area.addEventListener('change', async (e) => {
                     const radio = e.target.closest('.pilih-dobel');
                     if (!radio) return;
 
-                    const grupRadio = tbody.querySelectorAll(`input[name="${radio.name}"]`);
+                    const grupRadio = area.querySelectorAll(`input[name="${radio.name}"]`);
                     const sebelumnya = [...grupRadio].find(el => el.defaultChecked);
                     grupRadio.forEach(el => el.disabled = true);
 
@@ -818,15 +847,13 @@
                         const res = await resp.json().catch(() => ({}));
                         if (!resp.ok || !res.success) throw new Error(res.message);
 
-                        perbaruiTampilan(res);
-                        grupRadio.forEach(el => el.defaultChecked = el.checked);
                         toast('success', '✓ Data berhasil diperbarui');
+                        await muatUlang();
                     } catch (err) {
                         // Kembalikan pilihan ke kondisi sebelum diklik
                         if (sebelumnya) sebelumnya.checked = true;
-                        toast('error', '✕ Gagal memperbarui data. Coba lagi.');
-                    } finally {
                         grupRadio.forEach(el => el.disabled = false);
+                        toast('error', '✕ Gagal memperbarui data. Coba lagi.');
                     }
                 });
             })();

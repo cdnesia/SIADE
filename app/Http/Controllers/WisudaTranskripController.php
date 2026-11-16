@@ -151,21 +151,18 @@ class WisudaTranskripController extends Controller
             'npm' => 'required|string|max:30',
             'krs_id' => 'required|integer',
         ]);
-        $kembali = redirect()->route('wisuda.transkrip.index', $this->parameterKembali($request));
 
         try {
             $alasan = $this->transkrip->hapus($valid['npm'], (int) $valid['krs_id'], $request->user()?->id);
         } catch (\Throwable $e) {
             report($e);
 
-            return $kembali->with('error', '✕ Gagal menghapus data. Coba lagi.');
+            return $this->balas($request, false, '✕ Gagal menghapus data. Coba lagi.', 500);
         }
 
-        if ($alasan !== null) {
-            return $kembali->with('error', '✕ Gagal menghapus data. '.$alasan);
-        }
-
-        return $kembali->with('success', '✓ Data berhasil dihapus');
+        return $alasan !== null
+            ? $this->balas($request, false, '✕ Gagal menghapus data. '.$alasan)
+            : $this->balas($request, true, '✓ Data berhasil dihapus');
     }
 
     /**
@@ -178,19 +175,18 @@ class WisudaTranskripController extends Controller
             'krs_id' => 'required|integer',
             'nilai_angka' => 'required|numeric|min:0|max:100',
         ]);
-        $kembali = redirect()->route('wisuda.transkrip.index', $this->parameterKembali($request));
 
         try {
             $alasan = $this->transkrip->simpanNilai($valid['npm'], (int) $valid['krs_id'], (float) $valid['nilai_angka'], $request->user()?->id);
         } catch (\Throwable $e) {
             report($e);
 
-            return $kembali->with('error', '✕ Gagal memperbarui data. Coba lagi.');
+            return $this->balas($request, false, '✕ Gagal memperbarui data. Coba lagi.', 500);
         }
 
         return $alasan
-            ? $kembali->with('error', '✕ Gagal memperbarui data. '.$alasan)
-            : $kembali->with('success', '✓ Data berhasil diperbarui');
+            ? $this->balas($request, false, '✕ Gagal memperbarui data. '.$alasan)
+            : $this->balas($request, true, '✓ Data berhasil diperbarui');
     }
 
     /**
@@ -205,7 +201,6 @@ class WisudaTranskripController extends Controller
             'nilai_angka' => 'nullable|numeric|min:0|max:100',
             'angkatan' => 'nullable|digits:5',
         ]);
-        $kembali = redirect()->route('wisuda.transkrip.index', $this->parameterKembali($request));
 
         try {
             $alasan = $this->transkrip->tambahKrs(
@@ -218,12 +213,12 @@ class WisudaTranskripController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $kembali->with('error', '✕ Gagal menambahkan data. Coba lagi.');
+            return $this->balas($request, false, '✕ Gagal menambahkan data. Coba lagi.', 500);
         }
 
         return $alasan
-            ? $kembali->with('error', '✕ Gagal menambahkan data. '.$alasan)
-            : $kembali->with('success', '✓ Data berhasil ditambahkan');
+            ? $this->balas($request, false, '✕ Gagal menambahkan data. '.$alasan)
+            : $this->balas($request, true, '✓ Data berhasil ditambahkan');
     }
 
     /**
@@ -238,12 +233,23 @@ class WisudaTranskripController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return redirect()->route('wisuda.transkrip.index', $this->parameterKembali($request))
-                ->with('error', '✕ Gagal menghapus data. Coba lagi.');
+            return $this->balas($request, false, '✕ Gagal menghapus data. Coba lagi.', 500);
+        }
+
+        return $this->balas($request, true, '✓ Data berhasil dihapus — pilihan dobel dikembalikan ke otomatis');
+    }
+
+    /**
+     * Jawaban aksi: JSON untuk AJAX, redirect + flash untuk form biasa (cadangan tanpa JS).
+     */
+    private function balas(Request $request, bool $berhasil, string $pesan, int $statusGagal = 422)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['success' => $berhasil, 'message' => $pesan], $berhasil ? 200 : $statusGagal);
         }
 
         return redirect()->route('wisuda.transkrip.index', $this->parameterKembali($request))
-            ->with('success', '✓ Data berhasil dihapus — pilihan dobel dikembalikan ke otomatis');
+            ->with($berhasil ? 'success' : 'error', $pesan);
     }
 
     /**
