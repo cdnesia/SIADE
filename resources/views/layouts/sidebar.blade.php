@@ -50,6 +50,14 @@
             ],
         ],
         [
+            'title' => 'Wisuda',
+            'icon' => 'bx bx-award',
+            'children' => [
+                ['title' => 'Cek Per Angkatan', 'route' => 'wisuda.rekap.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Cek Per Mahasiswa', 'route' => 'wisuda.transkrip.index', 'icon' => 'bx bx-radio-circle'],
+            ],
+        ],
+        [
             'title' => 'Master Data',
             'icon' => 'bx bx-sitemap',
             'children' => [

@@ -70,12 +70,12 @@ class PenmaruMahasiswaService
 
         $byNpm = DB::table('master_mahasiswa')->whereIn('npm', $pendaftar->pluck('nim'))->get($kolom)->keyBy('npm');
 
-        $nik = $pendaftar->pluck('nik')->map(fn($n) => trim((string) $n))->filter()->unique();
+        $nik = $pendaftar->pluck('nik')->map(fn ($n) => trim((string) $n))->filter()->unique();
         $byNik = DB::table('master_mahasiswa')->whereIn('nik', $nik)->get($kolom)->groupBy('nik');
 
         // Kandidat pencocokan nama: master seangkatan (contoh: UMJA2026 -> 2026x)
         $angkatan = DB::table('master_mahasiswa')
-            ->where('tahun_angkatan', 'like', '20' . substr($tahun, 6, 2) . '%')
+            ->where('tahun_angkatan', 'like', '20'.substr($tahun, 6, 2).'%')
             ->get($kolom);
 
         foreach ($pendaftar as $p) {
@@ -84,13 +84,14 @@ class PenmaruMahasiswaService
 
             if ($p->master && $this->orangSama($p, $p->master)) {
                 $p->status_master = 'sudah';
+
                 continue;
             }
 
             // Cari data diri yang sama di master dengan NPM berbeda: NIK dulu, lalu nama + prodi
             $nikP = trim((string) $p->nik);
-            $p->master_lain = ($nikP !== '' ? ($byNik[$nikP] ?? collect())->first(fn($m) => $m->npm !== $p->nim) : null)
-                ?? $angkatan->first(fn($m) => $m->npm !== $p->nim
+            $p->master_lain = ($nikP !== '' ? ($byNik[$nikP] ?? collect())->first(fn ($m) => $m->npm !== $p->nim) : null)
+                ?? $angkatan->first(fn ($m) => $m->npm !== $p->nim
                     && (string) $m->kode_program_studi === (string) $p->prodi
                     && $this->namaSama($p->nama ?: $p->nama_daftar, $m->nama_mahasiswa));
 
@@ -101,7 +102,7 @@ class PenmaruMahasiswaService
         foreach ($pendaftar as $p) {
             $m = $p->master ?? $p->master_lain;
             $p->nama_siade = $m->nama_mahasiswa ?? null;
-            $p->nama_beda = $m && !$this->namaSama($p->nama ?: $p->nama_daftar, $m->nama_mahasiswa);
+            $p->nama_beda = $m && ! $this->namaSama($p->nama ?: $p->nama_daftar, $m->nama_mahasiswa);
         }
 
         return $pendaftar;
@@ -125,7 +126,7 @@ class PenmaruMahasiswaService
 
     private function namaSama(?string $a, ?string $b): bool
     {
-        $norm = fn($s) => trim(preg_replace('/\s+/', ' ', preg_replace('/[^A-Z ]/', ' ', mb_strtoupper((string) $s))));
+        $norm = fn ($s) => trim(preg_replace('/\s+/', ' ', preg_replace('/[^A-Z ]/', ' ', mb_strtoupper((string) $s))));
         $a = $norm($a);
         $b = $norm($b);
 
@@ -144,7 +145,7 @@ class PenmaruMahasiswaService
 
             $data = ['nim' => $nim];
             if ($prodi) {
-                $awalan = $prodi->jenjang . substr($pmb->pmb, 6, 2) . $prodi->nim_prodi_kode;
+                $awalan = $prodi->jenjang.substr($pmb->pmb, 6, 2).$prodi->nim_prodi_kode;
                 $sisa = substr($nim, strlen($awalan));
                 if (str_starts_with($nim, $awalan) && $sisa !== '' && ctype_digit($sisa)) {
                     $data['nim_num'] = (int) $sisa;
@@ -207,7 +208,7 @@ class PenmaruMahasiswaService
 
     public function kelasTersediaUntukProdi($kelas, string $kodeProdi): bool
     {
-        return empty($kelas->list_prodi) || str_contains($kelas->list_prodi, '.' . $kodeProdi . '.');
+        return empty($kelas->list_prodi) || str_contains($kelas->list_prodi, '.'.$kodeProdi.'.');
     }
 
     /**
@@ -247,7 +248,7 @@ class PenmaruMahasiswaService
             $pmb = $this->db()->table('pmb')->where('nomor', $nomor)->lockForUpdate()->first();
             $prodi = $this->daftarProdi()->get($pmb->prodi);
 
-            if (!$prodi) {
+            if (! $prodi) {
                 throw new \RuntimeException("Prodi {$pmb->prodi} tidak ditemukan di penmaru.");
             }
 
@@ -256,7 +257,7 @@ class PenmaruMahasiswaService
 
             $nimTerakhir = $this->db()->table('pmb')
                 ->where('prodi', $pmb->prodi)
-                ->where('pmb', 'like', $tahun . '%')
+                ->where('pmb', 'like', $tahun.'%')
                 ->whereNotIn('pmb', MahasiswaBaruController::EXCLUDE)
                 ->whereNotNull('nim')
                 ->where('nim_num', '!=', 0)
@@ -267,7 +268,7 @@ class PenmaruMahasiswaService
             $nimNum = (int) $nimTerakhir;
             do {
                 $nimNum++;
-                $nim = $prodi->jenjang . $kodeTahun . $prodi->nim_prodi_kode . str_pad($nimNum, 3, '0', STR_PAD_LEFT);
+                $nim = $prodi->jenjang.$kodeTahun.$prodi->nim_prodi_kode.str_pad($nimNum, 3, '0', STR_PAD_LEFT);
                 $dipakai = $this->db()->table('pmb')->where('nim', $nim)->where('nomor', '!=', $nomor)->exists()
                     || DB::table('master_mahasiswa')->where('npm', $nim)->exists();
             } while ($dipakai);
@@ -302,18 +303,19 @@ class PenmaruMahasiswaService
         // Kelas penmaru dipetakan ke master_kelas_perkuliahan berdasarkan nama
         $kelasLokal = DB::table('master_kelas_perkuliahan')
             ->pluck('id', 'nama_program_perkuliahan')
-            ->mapWithKeys(fn($id, $nama) => [strtolower(trim($nama)) => $id]);
+            ->mapWithKeys(fn ($id, $nama) => [strtolower(trim($nama)) => $id]);
 
         $sudahAda = DB::table('master_mahasiswa')->whereIn('npm', $pendaftar->pluck('nim'))->pluck('npm')->flip();
 
-        $teks = fn($nilai, $maks) => ($nilai = trim((string) $nilai)) !== '' && mb_strlen($nilai) <= $maks ? $nilai : null;
-        $tanggal = fn($nilai) => $nilai && $nilai !== '0000-00-00' ? $nilai : null;
+        $teks = fn ($nilai, $maks) => ($nilai = trim((string) $nilai)) !== '' && mb_strlen($nilai) <= $maks ? $nilai : null;
+        $tanggal = fn ($nilai) => $nilai && $nilai !== '0000-00-00' ? $nilai : null;
 
         $baris = [];
         $dilewati = [];
         foreach ($pendaftar as $p) {
             if (isset($sudahAda[$p->nim])) {
                 $dilewati[] = $p->nim;
+
                 continue;
             }
 
@@ -321,7 +323,7 @@ class PenmaruMahasiswaService
                 'nama_mahasiswa' => mb_strtoupper(trim($p->nama ?: $p->nama_daftar)),
                 'npm' => $p->nim,
                 'va_code' => '',
-                'tahun_angkatan' => '20' . substr($p->pmb, 6, 2) . '1', // UMJA2026xxxx -> 20261
+                'tahun_angkatan' => '20'.substr($p->pmb, 6, 2).'1', // UMJA2026xxxx -> 20261
                 'kode_program_studi' => $p->prodi,
                 'program_kuliah_id' => $kelasLokal[strtolower(trim((string) $p->nama_kelas))] ?? null,
                 // 2 = Pindahan untuk jalur transfer/pindahan, selain itu 1 = Peserta didik baru
@@ -362,7 +364,7 @@ class PenmaruMahasiswaService
             }
             unset($b);
 
-            collect($baris)->chunk(100)->each(fn($c) => DB::table('master_mahasiswa')->insert($c->all()));
+            collect($baris)->chunk(100)->each(fn ($c) => DB::table('master_mahasiswa')->insert($c->all()));
         });
     }
 
@@ -379,7 +381,7 @@ class PenmaruMahasiswaService
 
         $akunBaru = [];
         foreach ($baris as $b) {
-            if (!isset($sudahAda[$b['npm']])) {
+            if (! isset($sudahAda[$b['npm']])) {
                 $akunBaru[] = [
                     'name' => $b['nama_mahasiswa'],
                     'email' => $b['npm'],
@@ -389,14 +391,14 @@ class PenmaruMahasiswaService
                 ];
             }
         }
-        collect($akunBaru)->chunk(100)->each(fn($c) => DB::table('users')->insert($c->all()));
+        collect($akunBaru)->chunk(100)->each(fn ($c) => DB::table('users')->insert($c->all()));
 
         $userId = DB::table('users')->whereIn('email', $npm)->pluck('id', 'email');
 
         // Semua akun mahasiswa masuk ke role mahasiswa (id 6), dilewati jika role belum ada
         $role = Role::find(self::ROLE_MAHASISWA);
         if ($role) {
-            DB::table('model_has_roles')->insertOrIgnore($userId->map(fn($id) => [
+            DB::table('model_has_roles')->insertOrIgnore($userId->map(fn ($id) => [
                 'role_id' => $role->id,
                 'model_type' => \App\Models\User::class,
                 'model_id' => $id,

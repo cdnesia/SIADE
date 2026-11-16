@@ -2,21 +2,23 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Client\Response;
 
 class NeofeederService
 {
     private $api_url;
+
     private $username;
+
     private $password;
 
     public function __construct()
     {
         $this->username = config('services.neofeeder.username');
         $this->password = config('services.neofeeder.password');
-        $this->api_url  = config('services.neofeeder.url');
+        $this->api_url = config('services.neofeeder.url');
     }
 
     /**
@@ -53,7 +55,7 @@ class NeofeederService
         } catch (\Exception $e) {
             Log::error('NeofeederService: Exception saat request token.', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
         }
 
@@ -63,18 +65,17 @@ class NeofeederService
     /**
      * Get data from Neofeeder API
      *
-     * @param array $data
      * @return array
      */
     public function getData(array $data)
     {
         $token = $this->getToken();
 
-        if (!$token) {
+        if (! $token) {
             return [
                 'error_code' => 1,
                 'error_desc' => 'Gagal mendapatkan token dari Neofeeder.',
-                'data' => null
+                'data' => null,
             ];
         }
 
@@ -86,11 +87,11 @@ class NeofeederService
                 ->timeout(30)
                 ->post($this->api_url, $postData);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return [
                     'error_code' => 3,
-                    'error_desc' => "HTTP error code: " . $response->status(),
-                    'data' => null
+                    'error_desc' => 'HTTP error code: '.$response->status(),
+                    'data' => null,
                 ];
             }
 
@@ -98,13 +99,13 @@ class NeofeederService
         } catch (\Exception $e) {
             Log::error('NeofeederService: Exception pada getData', [
                 'message' => $e->getMessage(),
-                'data' => $data
+                'data' => $data,
             ]);
 
             return [
                 'error_code' => 2,
-                'error_desc' => 'HTTP request error: ' . $e->getMessage(),
-                'data' => null
+                'error_desc' => 'HTTP request error: '.$e->getMessage(),
+                'data' => null,
             ];
         }
     }
@@ -112,35 +113,35 @@ class NeofeederService
     /**
      * Get program studi data
      *
-     * @param string|null $nama_prodi
+     * @param  string|null  $nama_prodi
      * @return array|null
      */
     public function getProdi($nama_prodi = null)
     {
         $token = $this->getToken();
 
-        if (!$token) {
+        if (! $token) {
             return null;
         }
 
-        $filter = "";
+        $filter = '';
 
         if ($nama_prodi) {
             $parts = explode(' ', $nama_prodi, 2);
 
             if (count($parts) === 2) {
                 $jenjang = $parts[0];
-                $prodi   = $parts[1];
+                $prodi = $parts[1];
                 $filter = "nama_program_studi='$prodi' AND nama_jenjang_pendidikan='$jenjang'";
             }
         }
 
         $data = [
-            "act" => "GetProdi",
-            "filter" => $filter,
-            "order" => "",
-            "limit" => 0,
-            "offset" => 0
+            'act' => 'GetProdi',
+            'filter' => $filter,
+            'order' => '',
+            'limit' => 0,
+            'offset' => 0,
         ];
 
         $postData = array_merge(['token' => $token], $data);
@@ -151,10 +152,11 @@ class NeofeederService
                 ->timeout(30)
                 ->post($this->api_url, $postData);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('NeofeederService: Gagal get prodi', [
-                    'status' => $response->status()
+                    'status' => $response->status(),
                 ]);
+
                 return null;
             }
 
@@ -168,8 +170,9 @@ class NeofeederService
         } catch (\Exception $e) {
             Log::error('NeofeederService: Exception pada getProdi', [
                 'message' => $e->getMessage(),
-                'nama_prodi' => $nama_prodi
+                'nama_prodi' => $nama_prodi,
             ]);
+
             return null;
         }
     }
@@ -177,18 +180,17 @@ class NeofeederService
     /**
      * CRUD operations
      *
-     * @param array $data
      * @return array
      */
     public function crud(array $data)
     {
         $token = $this->getToken();
 
-        if (!$token) {
+        if (! $token) {
             return [
                 'error_code' => 1,
                 'error_desc' => 'Gagal mendapatkan token dari Neofeeder.',
-                'data' => null
+                'data' => null,
             ];
         }
 
@@ -201,11 +203,11 @@ class NeofeederService
                 ->retry(2, 500)
                 ->post($this->api_url, $postData);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return [
                     'error_code' => 3,
-                    'error_desc' => "HTTP error code: " . $response->status(),
-                    'data' => null
+                    'error_desc' => 'HTTP error code: '.$response->status(),
+                    'data' => null,
                 ];
             }
 
@@ -215,7 +217,7 @@ class NeofeederService
                 return [
                     'error_code' => 4,
                     'error_desc' => $responseBody['error_desc'] ?? 'Terjadi kesalahan dari API.',
-                    'data' => null
+                    'data' => null,
                 ];
             }
 
@@ -223,18 +225,18 @@ class NeofeederService
                 'error_code' => 0,
                 'error_desc' => '',
                 'jumlah' => count($responseBody['data'] ?? []),
-                'data' => $responseBody['data'] ?? null
+                'data' => $responseBody['data'] ?? null,
             ];
         } catch (\Exception $e) {
             Log::error('NeofeederService: Exception pada crud', [
                 'message' => $e->getMessage(),
-                'data' => $data
+                'data' => $data,
             ]);
 
             return [
                 'error_code' => 2,
-                'error_desc' => 'HTTP request error: ' . $e->getMessage(),
-                'data' => null
+                'error_desc' => 'HTTP request error: '.$e->getMessage(),
+                'data' => null,
             ];
         }
     }
@@ -242,35 +244,35 @@ class NeofeederService
     /**
      * Get kurikulum data
      *
-     * @param string|null $prodi
-     * @param int|null $semester
+     * @param  string|null  $prodi
+     * @param  int|null  $semester
      * @return array
      */
     public function getKurikulum($prodi = null, $semester = null)
     {
-        if (!$prodi || !$semester) {
+        if (! $prodi || ! $semester) {
             return [];
         }
 
         $kurikulumMap = $this->getKurikulumMap();
         $tahunKurikulum = $kurikulumMap[$prodi][$semester] ?? null;
 
-        if (!$tahunKurikulum) {
+        if (! $tahunKurikulum) {
             return [];
         }
 
         $token = $this->getToken();
 
-        if (!$token) {
+        if (! $token) {
             return [];
         }
 
         $data = [
-            "act" => "GetMatkulKurikulum",
-            "filter" => "id_semester='$tahunKurikulum' AND semester='$semester' AND nama_program_studi='$prodi'",
-            "order" => "",
-            "limit" => 0,
-            "offset" => 0
+            'act' => 'GetMatkulKurikulum',
+            'filter' => "id_semester='$tahunKurikulum' AND semester='$semester' AND nama_program_studi='$prodi'",
+            'order' => '',
+            'limit' => 0,
+            'offset' => 0,
         ];
 
         $postData = array_merge(['token' => $token], $data);
@@ -281,23 +283,26 @@ class NeofeederService
                 ->timeout(30)
                 ->post($this->api_url, $postData);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('NeofeederService: Gagal get kurikulum', [
                     'status' => $response->status(),
                     'prodi' => $prodi,
-                    'semester' => $semester
+                    'semester' => $semester,
                 ]);
+
                 return [];
             }
 
             $responseBody = $response->json();
+
             return $responseBody['data'] ?? [];
         } catch (\Exception $e) {
             Log::error('NeofeederService: Exception pada getKurikulum', [
                 'message' => $e->getMessage(),
                 'prodi' => $prodi,
-                'semester' => $semester
+                'semester' => $semester,
             ]);
+
             return [];
         }
     }

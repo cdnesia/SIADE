@@ -58,7 +58,7 @@ class SinkronPembayaranService
     {
         // Diperiksa ulang dari data terbaru agar pembayaran tidak ditambahkan dua kali
         $hasil = $this->periksa([$nim])->first();
-        if (!$hasil['bisa_sinkron']) {
+        if (! $hasil['bisa_sinkron']) {
             throw new RuntimeException($hasil['keterangan']);
         }
 
@@ -76,14 +76,14 @@ class SinkronPembayaranService
         if ($hasil['nonaktifkan']) {
             $payload['statusAktif'] = 'T';
         }
-        if (!$hasil['cocok'] && $hasil['status'] !== 'perlu_nonaktif') {
+        if (! $hasil['cocok'] && $hasil['status'] !== 'perlu_nonaktif') {
             $payload['detailTagihan'] = $this->keCamelCase($sumber['detail_tagihan']);
             $payload['detailPotongan'] = $this->keCamelCase($sumber['detail_potongan']);
         }
 
         $respon = $this->api->post('public/api/tagihan/update', $payload);
-        if (!($respon['data']['success'] ?? false)) {
-            throw new RuntimeException('API tagihan menolak: ' . ($respon['data']['message'] ?? $respon['error_desc']));
+        if (! ($respon['data']['success'] ?? false)) {
+            throw new RuntimeException('API tagihan menolak: '.($respon['data']['message'] ?? $respon['error_desc']));
         }
 
         return $hasil;
@@ -95,12 +95,12 @@ class SinkronPembayaranService
     private function tagihan(array $npm): Collection
     {
         $respon = $this->api->post('public/api/tagihan/cek', ['npm' => array_values(array_unique($npm))]);
-        if (!($respon['data']['success'] ?? false)) {
-            throw new RuntimeException('Gagal mengambil data tagihan: ' . ($respon['data']['message'] ?? $respon['error_desc']));
+        if (! ($respon['data']['success'] ?? false)) {
+            throw new RuntimeException('Gagal mengambil data tagihan: '.($respon['data']['message'] ?? $respon['error_desc']));
         }
 
         return collect($respon['data']['data'] ?? [])
-            ->filter(fn($t) => empty($t['deleted_at']))
+            ->filter(fn ($t) => empty($t['deleted_at']))
             ->groupBy('npm');
     }
 
@@ -110,8 +110,8 @@ class SinkronPembayaranService
     private function pilihSumber(Collection $tagihan): ?array
     {
         return $tagihan
-            ->filter(fn($t) => collect($this->rincian($t['detail_tagihan']))->has(self::BIPOT_SPP))
-            ->sortBy([fn($a, $b) => (float) $b['nominal_terbayar'] <=> (float) $a['nominal_terbayar'], ['id', 'desc']])
+            ->filter(fn ($t) => collect($this->rincian($t['detail_tagihan']))->has(self::BIPOT_SPP))
+            ->sortBy([fn ($a, $b) => (float) $b['nominal_terbayar'] <=> (float) $a['nominal_terbayar'], ['id', 'desc']])
             ->first();
     }
 
@@ -121,7 +121,7 @@ class SinkronPembayaranService
     private function pilihTujuan(Collection $tagihan): ?array
     {
         return $tagihan
-            ->filter(fn($t) => strtoupper((string) $t['jenis_tagihan']) === 'SPP')
+            ->filter(fn ($t) => strtoupper((string) $t['jenis_tagihan']) === 'SPP')
             ->sortBy([['tahun_akademik', 'asc'], ['id', 'asc']])
             ->first();
     }
@@ -170,10 +170,10 @@ class SinkronPembayaranService
         }
 
         [$status, $keterangan] = match (true) {
-            !$daftar => ['tidak_ditemukan', 'NIM tidak ditemukan di data PMB'],
-            !$sumber => ['tanpa_sumber', "Tagihan daftar ulang {$daftar->pmb} tidak ditemukan"],
+            ! $daftar => ['tidak_ditemukan', 'NIM tidak ditemukan di data PMB'],
+            ! $sumber => ['tanpa_sumber', "Tagihan daftar ulang {$daftar->pmb} tidak ditemukan"],
             (float) $sumber['nominal_terbayar'] <= 0 => ['belum_bayar', "Belum ada pembayaran pada tagihan {$daftar->pmb}"],
-            !$tujuan => ['tanpa_tujuan', 'Tagihan NIM belum dibuat di SIMKEU'],
+            ! $tujuan => ['tanpa_tujuan', 'Tagihan NIM belum dibuat di SIMKEU'],
             $sudahLunasAktif => ['perlu_nonaktif', 'Sudah disinkron & lunas, tagihan NIM masih aktif. Sinkronkan untuk menonaktifkan'],
             $sudahSinkron => ['sudah', 'Sudah disinkron, pembayaran PMB sudah tercatat di tagihan NIM'],
             $tujuan['status_aktif'] !== 'Y' => ['lunas', 'Tagihan NIM sudah lunas/tidak aktif, tidak bisa diubah'],
@@ -192,9 +192,9 @@ class SinkronPembayaranService
     private function rincian($detail): array
     {
         $rincian = collect(is_string($detail) ? json_decode($detail, true) : $detail)
-            ->filter(fn($item) => isset($item['id_bipot']))
-            ->groupBy(fn($item) => (int) $item['id_bipot'])
-            ->map(fn($items) => (int) $items->sum(fn($item) => (float) ($item['nominal'] ?? 0)))
+            ->filter(fn ($item) => isset($item['id_bipot']))
+            ->groupBy(fn ($item) => (int) $item['id_bipot'])
+            ->map(fn ($items) => (int) $items->sum(fn ($item) => (float) ($item['nominal'] ?? 0)))
             ->all();
         ksort($rincian);
 
@@ -207,7 +207,7 @@ class SinkronPembayaranService
     private function keCamelCase($detail): array
     {
         return collect(is_string($detail) ? json_decode($detail, true) : $detail)
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'idBipot' => $item['id_bipot'],
                 'namaBipot' => $item['nama_bipot'],
                 'nominal' => $item['nominal'],

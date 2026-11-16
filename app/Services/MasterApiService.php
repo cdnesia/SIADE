@@ -11,12 +11,13 @@ use Illuminate\Support\Facades\DB;
 class MasterApiService
 {
     public function __construct(protected ApiService $api) {}
+
     public function expandTerms(int $start, int $end): array
     {
-        $y  = intdiv($start, 10);
-        $s  = $start % 10;
-        $ye = intdiv($end,   10);
-        $se = $end   % 10;
+        $y = intdiv($start, 10);
+        $s = $start % 10;
+        $ye = intdiv($end, 10);
+        $se = $end % 10;
         $out = [];
         while ($y < $ye || ($y === $ye && $s <= $se)) {
             $out[] = $y * 10 + $s;
@@ -26,8 +27,10 @@ class MasterApiService
                 $y++;
             }
         }
+
         return $out;
     }
+
     public function tahunAkademikAktif($kodeProdi = null)
     {
         $today = Carbon::today()->toDateString();
@@ -36,6 +39,7 @@ class MasterApiService
             ->whereDate('tanggal_mulai', '<=', $today)
             ->whereDate('tanggal_selesai', '>=', $today);
         $query->whereJsonContains('kode_program_studi', $kodeProdi);
+
         return $query->orderByDesc('id')->value('kode_tahun_akademik');
     }
 
@@ -46,14 +50,14 @@ class MasterApiService
             'jadwal',
             'mataKuliahJadwal',
             'mataKuliahLangsung',
-            'hari'
+            'hari',
         ])
             ->where('npm', $npm)
             ->get();
 
         $krsRaw = $krsRaw->sortBy([
-            fn($a, $b) => $a->kode_tahun_akademik <=> $b->kode_tahun_akademik,
-            fn($b, $a) => ($a->hari->nama_hari ?? '') <=> ($b->hari->nama_hari ?? '')
+            fn ($a, $b) => $a->kode_tahun_akademik <=> $b->kode_tahun_akademik,
+            fn ($b, $a) => ($a->hari->nama_hari ?? '') <=> ($b->hari->nama_hari ?? ''),
         ]);
 
         $krs = [];
@@ -69,7 +73,7 @@ class MasterApiService
         $masterDosen = collect($this->dataDosen()['data']['data'] ?? [])->keyBy('id');
 
         foreach ($tahunAkademikDitempuh as $key => $value) {
-            if (!isset($krs[$value])) {
+            if (! isset($krs[$value])) {
                 $krs[$value] = [];
                 $krs[$value]['semester'] = $key + 1;
                 $krs[$value]['jumlah_sks'] = 0;
@@ -135,16 +139,16 @@ class MasterApiService
     public function cetakKhs(string $npm, string $periode)
     {
         return $this->api->postFile('public/api/print/khs', [
-            "npm" => $npm,
-            "tahunAkademik" => $periode
+            'npm' => $npm,
+            'tahunAkademik' => $periode,
         ]);
     }
 
     public function cetakKrs(string $npm, string $periode)
     {
         return $this->api->postFile('public/api/print/krs', [
-            "npm" => $npm,
-            "tahunAkademik" => $periode
+            'npm' => $npm,
+            'tahunAkademik' => $periode,
         ]);
     }
 
@@ -160,6 +164,6 @@ class MasterApiService
 
     public function cekTagihanKKN(array $npm)
     {
-        return $this->api->post('public/api/v1/tagihan/cek', ['npm' => $npm, "jenisTagihan" => 'kkn']);
+        return $this->api->post('public/api/v1/tagihan/cek', ['npm' => $npm, 'jenisTagihan' => 'kkn']);
     }
 }

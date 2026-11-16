@@ -15,7 +15,9 @@ class ApiService
     private const TOKEN_CACHE_KEY = 'api_service.access_token';
 
     private string $baseUrl;
+
     private ?string $clientId;
+
     private ?string $clientSecret;
 
     public function __construct()
@@ -45,7 +47,7 @@ class ApiService
     public function get(string $endpoint): array
     {
         return $this->handle(
-            fn() => $this->client()->get($endpoint),
+            fn () => $this->client()->get($endpoint),
             $endpoint
         );
     }
@@ -56,7 +58,7 @@ class ApiService
     public function post(string $endpoint, array $data = []): array
     {
         return $this->handle(
-            fn() => $this->client()->post($endpoint, $data),
+            fn () => $this->client()->post($endpoint, $data),
             $endpoint
         );
     }
@@ -113,7 +115,7 @@ class ApiService
                 ->timeout(30)
                 ->post($endpoint, $data);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('ApiService: Gagal mendapatkan token.', [
                     'endpoint' => $endpoint,
                     'status' => $response->status(),
@@ -234,7 +236,7 @@ class ApiService
                 $response = $request();
             }
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('ApiService: HTTP request gagal.', [
                     'endpoint' => $endpoint,
                     'status' => $response->status(),
@@ -243,7 +245,7 @@ class ApiService
 
                 return [
                     'error_code' => $response->status(),
-                    'error_desc' => $response->json('message') ?? 'HTTP error: ' . $response->status(),
+                    'error_desc' => $response->json('message') ?? 'HTTP error: '.$response->status(),
                     'data' => null,
                 ];
             }
@@ -262,7 +264,7 @@ class ApiService
 
             return [
                 'error_code' => 1,
-                'error_desc' => 'Request error: ' . $e->getMessage(),
+                'error_desc' => 'Request error: '.$e->getMessage(),
                 'data' => null,
             ];
         }

@@ -28,6 +28,8 @@ use App\Http\Controllers\SyncMahasiswaController;
 use App\Http\Controllers\TahunAkademikController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\VerifikasiBeasiswaController;
+use App\Http\Controllers\WisudaRekapController;
+use App\Http\Controllers\WisudaTranskripController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login', 301);
@@ -116,6 +118,18 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::post('/import/preview', [ImportMahasiswaBaruController::class, 'preview'])->name('import.preview');
         Route::post('/import/simpan', [ImportMahasiswaBaruController::class, 'simpan'])->name('import.simpan');
         Route::post('/import/batal', [ImportMahasiswaBaruController::class, 'batal'])->name('import.batal');
+    });
+
+    Route::get('wisuda/rekap', [WisudaRekapController::class, 'index'])->name('wisuda.rekap.index');
+    Route::post('wisuda/rekap/simpan', [WisudaRekapController::class, 'simpan'])->name('wisuda.rekap.simpan');
+    Route::get('wisuda/rekap/export', [WisudaRekapController::class, 'export'])->name('wisuda.rekap.export');
+    Route::prefix('wisuda/transkrip')->name('wisuda.transkrip.')->group(function () {
+        Route::get('/', [WisudaTranskripController::class, 'index'])->name('index');
+        Route::post('/pilih', [WisudaTranskripController::class, 'pilih'])->name('pilih');
+        Route::post('/reset', [WisudaTranskripController::class, 'reset'])->name('reset');
+        Route::delete('/hapus', [WisudaTranskripController::class, 'hapus'])->name('hapus');
+        Route::post('/nilai', [WisudaTranskripController::class, 'nilai'])->name('nilai');
+        Route::post('/krs', [WisudaTranskripController::class, 'krs'])->name('krs');
     });
 
     Route::resource('kurikulum', KurikulumController::class)->except('show');
