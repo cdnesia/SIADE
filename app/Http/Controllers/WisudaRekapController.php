@@ -202,6 +202,7 @@ class WisudaRekapController extends Controller
                     'kode_mk' => $b['kode_mk'],
                     'nama_mk' => $b['nama_mk'],
                     'periode' => $b['nama_periode'],
+                    'kode_periode' => $b['periode'],
                     'sks' => $b['sks'],
                 ])->values()->all(),
                 // Nilai tidak lulus pada MK yang dihitung → bisa diperbaiki
@@ -210,6 +211,7 @@ class WisudaRekapController extends Controller
                     'kode_mk' => $b['kode_mk'],
                     'nama_mk' => $b['nama_mk'],
                     'periode' => $b['nama_periode'],
+                    'kode_periode' => $b['periode'],
                     'sks' => $b['sks'],
                     'huruf' => $b['nilai_huruf'],
                     'angka' => $b['nilai_angka'] !== null ? number_format((float) $b['nilai_angka'], 2) : null,

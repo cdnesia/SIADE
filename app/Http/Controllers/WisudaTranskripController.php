@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SkalaNilai;
 use App\Models\TahunAkademik;
 use App\Services\KurikulumFeederService;
+use App\Services\NilaiPddiktiService;
 use App\Services\TranskripWisudaService;
 use Illuminate\Http\Request;
 
@@ -13,6 +14,7 @@ class WisudaTranskripController extends Controller
     public function __construct(
         protected TranskripWisudaService $transkrip,
         protected KurikulumFeederService $kurikulumFeeder,
+        protected NilaiPddiktiService $nilaiPddikti,
     ) {}
 
     /**
@@ -219,6 +221,66 @@ class WisudaTranskripController extends Controller
         return $alasan
             ? $this->balas($request, false, '✕ Gagal menambahkan data. '.$alasan)
             : $this->balas($request, true, '✓ Data berhasil ditambahkan');
+    }
+
+    /**
+     * Nilai mahasiswa di PDDikti (Neo Feeder), per kode MK, untuk dibandingkan (AJAX).
+     * Query: npm, segarkan=1 (abaikan cache).
+     */
+    public function pddikti(Request $request)
+    {
+        $valid = $request->validate(['npm' => 'required|string|max:30']);
+
+        try {
+            $nilai = $this->nilaiPddikti->nilaiMahasiswa($valid['npm'], $request->boolean('segarkan'));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => '✕ Gagal memuat data dari PDDikti. Periksa koneksi Anda. ('.$e->getMessage().')',
+            ], 502);
+        }
+
+        return response()->json(['success' => true, 'nilai' => $nilai]);
+    }
+
+    /**
+     * Salin satu nilai PDDikti ke KRS SIADE (timpa KRS yang ada atau buat KRS baru).
+     */
+    public function pddiktiSimpan(Request $request)
+    {
+        $valid = $request->validate([
+            'npm' => 'required|string|max:30',
+            'kode_mk' => 'required|string|max:30',
+            'periode' => 'required|string|max:10',
+            'krs_id' => 'nullable|integer',
+            'angkatan' => 'nullable|digits:5',
+        ]);
+
+        try {
+            // Nilai diambil ulang dari server (cache), bukan dari isian browser
+            $baris = $this->nilaiPddikti->baris($valid['npm'], $valid['kode_mk'], $valid['periode']);
+            if (! $baris) {
+                return $this->balas($request, false, '✕ Nilai '.$valid['kode_mk'].' periode '.$valid['periode'].' tidak ditemukan di PDDikti.');
+            }
+
+            $alasan = $this->transkrip->sinkronPddikti(
+                $valid['npm'], $valid['kode_mk'], $valid['krs_id'] ?? null, $baris, $valid['angkatan'] ?? '', $request->user()?->id
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->balas($request, false, '✕ Gagal memperbarui data. Coba lagi.', 500);
+        }
+
+        if ($alasan) {
+            return $this->balas($request, false, '✕ Gagal memperbarui data. '.$alasan);
+        }
+
+        return $this->balas($request, true, empty($valid['krs_id'])
+            ? '✓ Data berhasil ditambahkan dari PDDikti'
+            : '✓ Data berhasil diperbarui dari PDDikti');
     }
 
     /**

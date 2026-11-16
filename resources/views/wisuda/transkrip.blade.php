@@ -271,6 +271,10 @@
                     <label for="cari-transkrip" class="visually-hidden">Cari matakuliah</label>
                     <input type="search" id="cari-transkrip" class="form-control form-control-sm" style="width: 220px"
                         placeholder="Cari kode / nama matakuliah">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="tombol-banding-pddikti"
+                        title="Ambil nilai mahasiswa ini dari PDDikti (Neo Feeder) lalu bandingkan per matakuliah">
+                        <i class="bx bx-cloud-download me-1"></i>Bandingkan PDDikti
+                    </button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
                         <i class="bx bx-printer me-1"></i>Cetak
                     </button>
@@ -289,6 +293,7 @@
                             <th class="text-center">Bobot</th>
                             <th class="text-center">Mutu</th>
                             <th class="text-center no-print" style="width: 150px">Status</th>
+                            <th class="text-center no-print" style="width: 120px">PDDikti</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -388,17 +393,26 @@
                                         <span class="badge bg-success-subtle text-success-emphasis badge-titik">Dihitung</span>
                                     @endif
                                 </td>
+                                <td class="text-center no-print sel-pddikti" data-kode="{{ strtoupper(trim($b['kode_mk'])) }}"
+                                    data-periode="{{ $b['periode'] }}" data-huruf="{{ $b['nilai_huruf'] }}">
+                                    <button type="button" class="btn btn-sm btn-link p-0 tombol-pddikti" data-krs="{{ $b['krs_id'] }}"
+                                        data-kode="{{ strtoupper(trim($b['kode_mk'])) }}" data-nama="{{ $b['nama_mk'] }}"
+                                        data-periode="{{ $b['periode'] }}" data-nama-periode="{{ $b['nama_periode'] }}"
+                                        data-huruf="{{ $b['nilai_huruf'] }}" data-angka="{{ $b['nilai_angka'] !== null ? number_format($b['nilai_angka'], 2) : '' }}">
+                                        <i class="bx bx-cloud-download"></i> Ambil
+                                    </button>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="text-center py-5 text-muted">
+                                <td colspan="10" class="text-center py-5 text-muted">
                                     <i class="bx bx-folder-open fs-1 d-block mb-1"></i>
                                     Mahasiswa ini belum memiliki data KRS/nilai.
                                 </td>
                             </tr>
                         @endforelse
                         <tr id="baris-kosong-filter" class="d-none">
-                            <td colspan="9" class="text-center py-4 text-muted">
+                            <td colspan="10" class="text-center py-4 text-muted">
                                 Tidak ada matakuliah yang cocok dengan filter/pencarian.
                                 <a href="javascript:void(0)" id="reset-filter">Tampilkan semua</a>
                             </td>
@@ -411,12 +425,12 @@
                                 <td class="text-center" id="f-sks">{{ $r['total_sks'] }}</td>
                                 <td colspan="3" class="text-end">Total Mutu</td>
                                 <td class="text-center" id="f-mutu">{{ number_format($r['total_mutu'], 2) }}</td>
-                                <td class="no-print"></td>
+                                <td class="no-print" colspan="2"></td>
                             </tr>
                             <tr>
                                 <td colspan="7" class="text-end">Indeks Prestasi Kumulatif (IPK)</td>
                                 <td class="text-center text-primary" id="f-ipk">{{ number_format($r['ipk'], 2) }}</td>
-                                <td class="no-print"></td>
+                                <td class="no-print" colspan="2"></td>
                             </tr>
                         </tfoot>
                     @endif
@@ -473,6 +487,12 @@
                                         @endif
                                     </td>
                                     <td class="text-end no-print text-nowrap">
+                                        <button type="button" class="btn btn-sm btn-outline-primary tombol-pddikti me-1"
+                                            data-krs="{{ $mk['krs_id'] }}" data-kode="{{ $mk['kode_mk'] }}" data-nama="{{ $mk['nama_mk'] }}"
+                                            data-periode="" data-nama-periode="" data-huruf="{{ $mk['nilai_lama'] ?? '' }}" data-angka=""
+                                            title="Ambil nilai matakuliah ini dari PDDikti">
+                                            <i class="bx bx-cloud-download"></i> PDDikti
+                                        </button>
                                         @if ($mk['status'] === 'belum_diambil')
                                             @php $mkLokal = $mk_lokal->get($mk['kode_mk']); @endphp
                                             @if ($mkLokal)
@@ -601,6 +621,40 @@
             </div>
         </div>
 
+        {{-- Modal ambil nilai dari PDDikti per matakuliah --}}
+        <div class="modal fade" id="modal-pddikti" tabindex="-1" aria-labelledby="judul-modal-pddikti" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <form action="{{ route('wisuda.transkrip.pddikti.simpan') }}" method="post" class="modal-content form-ajax" novalidate>
+                    @csrf
+                    <input type="hidden" name="npm" value="{{ $mhs->npm }}">
+                    <input type="hidden" name="angkatan" value="{{ $angkatan }}">
+                    <input type="hidden" name="kode_mk" id="pddikti-kode-mk">
+                    <input type="hidden" name="krs_id" id="pddikti-krs-id">
+                    <div class="modal-header">
+                        <div>
+                            <h6 class="modal-title mb-0" id="judul-modal-pddikti"><i class="bx bx-cloud-download me-1"></i>Ambil Nilai dari PDDikti</h6>
+                            <div class="small text-muted"><span id="pddikti-nama" class="fw-semibold"></span>
+                                <span id="pddikti-kode" class="badge bg-light text-dark border font-monospace"></span></div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="small mb-2">Nilai di SIADE sekarang: <strong id="pddikti-siade"></strong></div>
+                        <div id="pddikti-isi"></div>
+                        <div class="alert alert-info small py-2 mt-3 mb-0">
+                            <i class="bx bx-info-circle me-1"></i>Nilai angka PDDikti disalin ke KRS SIADE; huruf & bobot dihitung dari skala nilai prodi.
+                            Nilai lama dicatat di riwayat perbaikan. Transkrip & IPK tetap dihitung dari SIADE.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-link me-auto" id="pddikti-segarkan"><i class="bx bx-refresh me-1"></i>Ambil ulang dari PDDikti</button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary" id="pddikti-simpan"><i class="bx bx-save me-1"></i>Salin ke SIADE</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         {{-- Modal konfirmasi hapus matakuliah dobel --}}
         <div class="modal fade" id="modal-hapus" tabindex="-1" aria-labelledby="judul-modal-hapus" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -702,6 +756,7 @@
                         if (filter && [...filter.options].some(o => o.value === filterLama)) filter.value = filterLama;
                         if ($id('cari-transkrip')) $id('cari-transkrip').value = cariLama || '';
                         terapkanFilter();
+                        if (typeof tandaiPddikti === 'function') tandaiPddikti();
                     } catch (err) {
                         toast('error', '✕ Gagal memuat data. Periksa koneksi Anda.');
                     } finally {
@@ -827,6 +882,137 @@
                         isi('hapus-periode', d.periode); isi('hapus-nilai', d.nilai);
                         modalHapus.show();
                     }
+                });
+
+                // ---- Nilai PDDikti: bandingkan & salin per matakuliah ----
+                const urlPddikti = @json(route('wisuda.transkrip.pddikti'));
+                const modalPddikti = new bootstrap.Modal($id('modal-pddikti'));
+                const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                const hurufSiade = (angka) => skala.find(s => angka >= parseFloat(s.nilai_mulai) && angka <= parseFloat(s.nilai_sampai));
+                let pddikti = null; // { KODE: [baris...] } setelah diambil
+
+                async function ambilPddikti(segarkan = false) {
+                    if (pddikti && !segarkan) return pddikti;
+                    const url = new URL(urlPddikti);
+                    url.searchParams.set('npm', npm);
+                    if (segarkan) url.searchParams.set('segarkan', 1);
+                    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                    const res = await resp.json().catch(() => ({}));
+                    if (!resp.ok || !res.success) throw new Error(res.message || '✕ Gagal memuat data dari PDDikti. Periksa koneksi Anda.');
+                    pddikti = Array.isArray(res.nilai) ? {} : res.nilai;
+                    return pddikti;
+                }
+
+                // Baris PDDikti yang dipakai untuk satu MK: periode sama, kalau tidak ada yang terakhir
+                const pasangan = (baris, periode) => baris.find(b => b.periode === periode) || baris[baris.length - 1];
+                const sama = (a, b) => String(a || '').trim().toUpperCase() === String(b || '').trim().toUpperCase();
+
+                // Isi kolom "PDDikti" di tabel transkrip dengan huruf PDDikti (hijau = sama, oranye = beda)
+                function tandaiPddikti() {
+                    if (!pddikti) return;
+                    let beda = 0, tidakAda = 0;
+                    area.querySelectorAll('.sel-pddikti').forEach(td => {
+                        const baris = pddikti[td.dataset.kode] || [];
+                        const tombol = td.querySelector('.tombol-pddikti');
+                        let label;
+                        if (!baris.length) {
+                            tidakAda++;
+                            label = '<span class="small text-muted">Tidak ada</span>';
+                        } else {
+                            const p = pasangan(baris, td.dataset.periode);
+                            const cocok = sama(p.nilai_huruf, td.dataset.huruf);
+                            if (!cocok) beda++;
+                            label = `<span class="fw-semibold ${cocok ? 'text-success' : 'text-warning'}">${esc(p.nilai_huruf || '-')}</span>`
+                                + (p.nilai_angka !== null ? ` <span class="small text-muted">${esc(p.nilai_angka)}</span>` : '')
+                                + (cocok ? ' <i class="bx bx-check text-success"></i>' : '');
+                        }
+                        td.innerHTML = `<div>${label}</div>`;
+                        if (tombol) {
+                            tombol.innerHTML = baris.length ? '<i class="bx bx-transfer-alt"></i> Salin' : '<i class="bx bx-cloud-download"></i> Cek';
+                            td.appendChild(tombol);
+                        }
+                    });
+                    return { beda, tidakAda };
+                }
+
+                async function bandingkanSemua(tombol) {
+                    const teks = tombol.innerHTML;
+                    tombol.disabled = true;
+                    tombol.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Mengambil...';
+                    try {
+                        await ambilPddikti(true);
+                        const h = tandaiPddikti();
+                        toast(h.beda ? 'warning' : 'success', h.beda
+                            ? `⚠ ${h.beda} matakuliah nilainya berbeda dengan PDDikti (kolom PDDikti berwarna oranye).`
+                            : '✓ Semua nilai yang ada di PDDikti sama dengan SIADE.');
+                    } catch (err) {
+                        toast('error', err.message);
+                    } finally {
+                        tombol.disabled = false;
+                        tombol.innerHTML = teks;
+                    }
+                }
+
+                function isiModalPddikti(d) {
+                    const baris = pddikti[d.kode] || [];
+                    $id('pddikti-siade').textContent = d.krs
+                        ? `${d.huruf || 'kosong'}${d.angka ? ' / ' + d.angka : ''}${d.namaPeriode ? ' · ' + d.namaPeriode : ''}`
+                        : 'belum ada KRS (KRS baru dibuat pada periode PDDikti)';
+                    if (!baris.length) {
+                        $id('pddikti-isi').innerHTML = `<div class="text-center text-muted py-4"><i class="bx bx-search-alt fs-1 d-block mb-1"></i>
+                            Matakuliah ${esc(d.kode)} tidak ditemukan di PDDikti untuk mahasiswa ini.</div>`;
+                        $id('pddikti-simpan').disabled = true;
+                        return;
+                    }
+                    const dipilih = pasangan(baris, d.periode);
+                    $id('pddikti-isi').innerHTML = `
+                        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                            <thead class="table-light"><tr><th style="width:40px"><span class="visually-hidden">Pilih</span></th><th>Periode</th><th>Kelas</th>
+                                <th class="text-center">Angka</th><th class="text-center">Huruf PDDikti</th><th class="text-center">Hasil di SIADE</th><th class="text-center">Status</th></tr></thead>
+                            <tbody>${baris.map((b, i) => {
+                                const s = b.nilai_angka !== null ? hurufSiade(b.nilai_angka) : null;
+                                const cocok = d.krs && sama(b.nilai_huruf, d.huruf);
+                                return `<tr>
+                                    <td><input class="form-check-input" type="radio" name="periode" value="${esc(b.periode)}" id="pd-${i}" ${b === dipilih ? 'checked' : ''} required></td>
+                                    <td><label for="pd-${i}" class="mb-0">${esc(b.periode)}</label></td>
+                                    <td class="small">${esc(b.kelas || '-')}</td>
+                                    <td class="text-center">${b.nilai_angka !== null ? esc(b.nilai_angka) : '-'}</td>
+                                    <td class="text-center fw-semibold">${esc(b.nilai_huruf || '-')}</td>
+                                    <td class="text-center">${s ? `<span class="fw-semibold ${s.lulus === 'T' ? 'text-danger' : ''}">${esc(s.nama)}</span> <span class="small text-muted">(${parseFloat(s.bobot).toFixed(2)})</span>` : '<span class="small text-muted">dari huruf</span>'}</td>
+                                    <td class="text-center">${cocok ? '<span class="badge bg-success-subtle text-success-emphasis badge-titik">Sama</span>' : '<span class="badge bg-warning-subtle text-warning-emphasis badge-titik">Berbeda</span>'}</td>
+                                </tr>`;
+                            }).join('')}</tbody>
+                        </table></div>
+                        ${baris.length > 1 ? '<div class="small text-muted mt-1">MK ini tercatat lebih dari sekali di PDDikti; pilih periode yang nilainya disalin.</div>' : ''}`;
+                    $id('pddikti-simpan').disabled = false;
+                }
+
+                let pddiktiAktif = null;
+                async function bukaPddikti(d, segarkan = false) {
+                    pddiktiAktif = d;
+                    $id('pddikti-kode-mk').value = d.kode;
+                    $id('pddikti-krs-id').value = d.krs || '';
+                    isi('pddikti-nama', d.nama); isi('pddikti-kode', d.kode);
+                    $id('pddikti-siade').textContent = '';
+                    $id('pddikti-isi').innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-1"></span>Mengambil nilai dari PDDikti...</div>';
+                    $id('pddikti-simpan').disabled = true;
+                    modalPddikti.show();
+                    try {
+                        await ambilPddikti(segarkan);
+                        isiModalPddikti(d);
+                        tandaiPddikti();
+                    } catch (err) {
+                        $id('pddikti-isi').innerHTML = `<div class="alert alert-danger small mb-0">${esc(err.message)}</div>`;
+                        toast('error', '✕ Gagal memuat data. Periksa koneksi Anda.');
+                    }
+                }
+
+                document.addEventListener('click', (e) => {
+                    const tBanding = e.target.closest('#tombol-banding-pddikti');
+                    if (tBanding) return bandingkanSemua(tBanding);
+                    const t = e.target.closest('.tombol-pddikti');
+                    if (t) return bukaPddikti({ ...t.dataset });
+                    if (e.target.closest('#pddikti-segarkan') && pddiktiAktif) bukaPddikti(pddiktiAktif, true);
                 });
 
                 // ---- Pilih matakuliah dobel ----

@@ -130,6 +130,8 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
         Route::delete('/hapus', [WisudaTranskripController::class, 'hapus'])->name('hapus');
         Route::post('/nilai', [WisudaTranskripController::class, 'nilai'])->name('nilai');
         Route::post('/krs', [WisudaTranskripController::class, 'krs'])->name('krs');
+        Route::get('/pddikti', [WisudaTranskripController::class, 'pddikti'])->name('pddikti');
+        Route::post('/pddikti', [WisudaTranskripController::class, 'pddiktiSimpan'])->name('pddikti.simpan');
     });
 
     Route::resource('kurikulum', KurikulumController::class)->except('show');

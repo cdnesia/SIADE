@@ -257,7 +257,7 @@ class TranskripWisudaService
      *
      * @return string|null pesan alasan jika ditolak, null jika berhasil
      */
-    public function tambahKrs(string $npm, string $kodeMk, string $periode, ?float $nilaiAngka, string $angkatan): ?string
+    public function tambahKrs(string $npm, string $kodeMk, string $periode, ?float $nilaiAngka, string $angkatan, ?int &$idBaru = null): ?string
     {
         $mahasiswa = Mahasiswa::where('npm', $npm)->first();
         if (! $mahasiswa) {
@@ -298,9 +298,91 @@ class TranskripWisudaService
             $kolom = array_merge($kolom, $this->kolomNilai($nilaiAngka, $skala));
         }
 
-        DB::table('tbl_mahasiswa_krs')->insert($kolom);
+        $idBaru = DB::table('tbl_mahasiswa_krs')->insertGetId($kolom);
 
         return null;
+    }
+
+    /**
+     * Salin nilai PDDikti (satu baris hasil NilaiPddiktiService) ke KRS SIADE.
+     * $krsId diisi → nilai KRS tsb ditimpa; null → dibuat KRS baru pada periode PDDikti.
+     * Huruf & bobot dihitung dari skala nilai prodi SIADE; nilai lama dicatat di log.
+     *
+     * @return string|null pesan alasan jika ditolak, null jika berhasil
+     */
+    public function sinkronPddikti(string $npm, string $kodeMk, ?int $krsId, array $nilaiPddikti, string $angkatan, ?int $userId = null): ?string
+    {
+        $mahasiswa = Mahasiswa::where('npm', $npm)->first();
+        if (! $mahasiswa) {
+            return 'Mahasiswa tidak ditemukan.';
+        }
+        $kodeMk = strtoupper(trim($kodeMk));
+
+        $angka = $nilaiPddikti['nilai_angka'];
+        if ($angka !== null) {
+            $skala = $this->skalaUntuk($mahasiswa->kode_program_studi, $angka);
+            if (! $skala) {
+                return 'Skala nilai prodi untuk nilai '.$angka.' tidak ditemukan.';
+            }
+            $kolom = $this->kolomNilai($angka, $skala);
+        } elseif (! empty($nilaiPddikti['nilai_huruf'])) {
+            // PDDikti hanya punya huruf: cari huruf yang sama di skala prodi
+            $skala = SkalaNilai::where('kode_program_studi', $mahasiswa->kode_program_studi)
+                ->whereRaw('UPPER(TRIM(nama)) = ?', [strtoupper($nilaiPddikti['nilai_huruf'])])
+                ->first();
+            if (! $skala) {
+                return "Huruf {$nilaiPddikti['nilai_huruf']} tidak ada di skala nilai prodi.";
+            }
+            $kolom = ['nilai_angka' => null, 'nilai_huruf' => $skala->nama, 'nilai_bobot' => $skala->bobot, 'lulus' => $skala->lulus, 'updated_at' => now()];
+        } else {
+            return 'Nilai di PDDikti masih kosong.';
+        }
+
+        $krs = null;
+        if ($krsId) {
+            $krs = KRS::with(['mataKuliahJadwal', 'mataKuliahLangsung'])->where('id', $krsId)->where('npm', $npm)->first();
+            if (! $krs) {
+                return 'Data KRS tidak ditemukan.';
+            }
+            if (strtoupper(trim($krs->mata_kuliah->kode_mata_kuliah ?? '')) !== $kodeMk) {
+                return 'Kode matakuliah KRS tidak sama dengan nilai PDDikti.';
+            }
+            $samaAngka = ($krs->nilai_angka === null && $kolom['nilai_angka'] === null)
+                || ($krs->nilai_angka !== null && $kolom['nilai_angka'] !== null && abs((float) $krs->nilai_angka - (float) $kolom['nilai_angka']) < 0.005);
+            if ($samaAngka && strtoupper(trim((string) $krs->nilai_huruf)) === strtoupper($kolom['nilai_huruf'])) {
+                return 'Nilai SIADE sudah sama dengan PDDikti.';
+            }
+        }
+
+        $alasan = null;
+        DB::transaction(function () use ($krs, $npm, $kodeMk, $nilaiPddikti, $angkatan, $kolom, $userId, &$alasan) {
+            $id = $krs?->id;
+            if (! $krs) {
+                $alasan = $this->tambahKrs($npm, $kodeMk, $nilaiPddikti['periode'], null, $angkatan, $id);
+                if ($alasan) {
+                    return;
+                }
+            }
+
+            KRS::where('id', $id)->update($kolom);
+
+            DB::table('tbl_wisuda_perbaikan_nilai_log')->insert([
+                'krs_id' => $id,
+                'npm' => $npm,
+                'nilai_angka_lama' => $krs?->nilai_angka,
+                'nilai_huruf_lama' => $krs?->nilai_huruf ?: null,
+                'nilai_bobot_lama' => $krs?->nilai_bobot,
+                'nilai_angka_baru' => $kolom['nilai_angka'] ?? 0, // PDDikti tanpa angka dicatat 0
+                'nilai_huruf_baru' => $kolom['nilai_huruf'],
+                'nilai_bobot_baru' => $kolom['nilai_bobot'],
+                'jenis' => 'sinkron_pddikti',
+                'user_id' => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        return $alasan;
     }
 
     /**

@@ -5,6 +5,9 @@
         .badge-titik::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 5px; vertical-align: middle; }
         .kartu-angka { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
         .angka-masalah { color: var(--bs-danger); font-weight: 600; }
+        /* Saat area data dimuat ulang lewat AJAX */
+        #area-rekap { transition: opacity .15s; }
+        #area-rekap.memuat { opacity: .5; pointer-events: none; }
     </style>
 @endpush
 
@@ -139,6 +142,8 @@
             </div>
         @endif
 
+        {{-- Area data: dimuat ulang lewat AJAX setelah simpan tanpa reload halaman --}}
+        <div id="area-rekap">
         {{-- Ringkasan angkatan --}}
         @php $ra = $ringkasan_angkatan; @endphp
         <div class="row g-3 mb-3">
@@ -340,6 +345,25 @@
             </div>
         </div>
 
+        {{-- Data untuk jendela isi; ikut diperbarui saat area dimuat ulang --}}
+        @php
+            $dataIsi = [];
+            foreach ($hasil as $b) {
+                $dataIsi[$b['npm']] = [
+                    'nama' => $b['nama'],
+                    'nilai' => $b['daftar_nilai_kosong'],
+                    'tidak_lulus' => $b['daftar_tidak_lulus'],
+                    'krs' => $b['daftar_belum_diambil'],
+                    'url' => route('wisuda.transkrip.index', array_filter([
+                        'npm' => $b['npm'], 'angkatan' => $angkatan, 'kurikulum' => $kurikulum_dipilih,
+                        'rekap' => http_build_query($parameterRekap),
+                    ])),
+                ];
+            }
+        @endphp
+        <script type="application/json" id="data-isi">{!! json_encode($dataIsi, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}</script>
+        </div>{{-- /#area-rekap --}}
+
         {{-- Jendela isi nilai kosong & tambah KRS (diisi lewat JS sesuai mahasiswa yang diklik) --}}
         <div class="modal fade" id="modal-isi" tabindex="-1" aria-labelledby="judul-modal-isi" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -356,6 +380,11 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body">
+                        <div class="alert alert-info d-flex align-items-center flex-wrap gap-2 py-2 small">
+                            <i class="bx bx-cloud-download fs-5"></i>
+                            <div class="flex-grow-1">Isi otomatis dari nilai yang tercatat di PDDikti (Neo Feeder). Periksa dulu, lalu klik Simpan.</div>
+                            <button type="button" class="btn btn-sm btn-primary" id="isi-pddikti"><i class="bx bx-cloud-download me-1"></i>Ambil dari PDDikti</button>
+                        </div>
                         <section id="bagian-nilai" class="mb-4">
                             <h6 class="mb-1"><i class="bx bx-edit-alt me-1 text-danger"></i>Nilai Kosong</h6>
                             <p class="small text-muted mb-2">Ketik nilai angka 0–100. Huruf & bobot dihitung dari skala nilai prodi. Baris yang dikosongkan tidak disimpan.</p>
@@ -434,27 +463,15 @@
             t.value = [...new Set(t.value.split(/[\s,;]+/).filter(Boolean))].join(',');
         });
         // Jumlah per halaman & filter status langsung diterapkan
-        document.querySelectorAll('.kirim-otomatis').forEach(el => el.addEventListener('change', () => el.form.submit()));
+        // (delegasi, karena toolbar ikut diganti saat area dimuat ulang)
+        document.addEventListener('change', (e) => { if (e.target.classList.contains('kirim-otomatis')) e.target.form.submit(); });
 
         @if ($hasil)
-            @php
-                $dataIsi = [];
-                foreach ($hasil as $b) {
-                    $dataIsi[$b['npm']] = [
-                        'nama' => $b['nama'],
-                        'nilai' => $b['daftar_nilai_kosong'],
-                        'tidak_lulus' => $b['daftar_tidak_lulus'],
-                        'krs' => $b['daftar_belum_diambil'],
-                        'url' => route('wisuda.transkrip.index', array_filter([
-                            'npm' => $b['npm'], 'angkatan' => $angkatan, 'kurikulum' => $kurikulum_dipilih,
-                            'rekap' => http_build_query($parameterRekap),
-                        ])),
-                    ];
-                }
-            @endphp
             // ---- Jendela isi nilai & tambah KRS ----
             (function() {
-                const dataIsi = {!! json_encode($dataIsi, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!};
+                const csrf = @json(csrf_token());
+                const area = document.getElementById('area-rekap');
+                const dataIsi = () => JSON.parse(document.getElementById('data-isi').textContent);
                 const skala = @json($skala_nilai);
                 const periode = @json($pilihan_periode);
                 const modal = new bootstrap.Modal(document.getElementById('modal-isi'));
@@ -466,7 +483,25 @@
 
                 function toast(tipe, pesan) {
                     Lobibox.notify(tipe, { size: 'mini', rounded: true, delay: 3000, delayIndicator: false, position: 'bottom right', msg: pesan, sound: false,
-                        icon: tipe === 'warning' ? 'bx bx-error' : 'bx bx-x-circle' });
+                        icon: tipe === 'success' ? 'bx bx-check-circle' : (tipe === 'warning' ? 'bx bx-error' : 'bx bx-x-circle') });
+                }
+
+                // Muat ulang ringkasan + tabel tanpa reload halaman (posisi scroll tetap)
+                async function muatUlang() {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('segarkan'); // jangan ambil ulang Feeder setiap simpan
+                    area.classList.add('memuat');
+                    try {
+                        const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                        if (!resp.ok) throw new Error();
+                        const baru = new DOMParser().parseFromString(await resp.text(), 'text/html').getElementById('area-rekap');
+                        if (!baru) throw new Error();
+                        area.innerHTML = baru.innerHTML;
+                    } catch (err) {
+                        toast('error', '✕ Gagal memuat data. Periksa koneksi Anda.');
+                    } finally {
+                        area.classList.remove('memuat');
+                    }
                 }
 
                 // Pratinjau huruf/bobot di sel "Hasil" pada baris yang sama
@@ -483,7 +518,8 @@
                     const tombol = e.target.closest('.tombol-isi');
                     if (!tombol) return;
                     const npm = tombol.dataset.npm;
-                    const d = dataIsi[npm];
+                    const d = dataIsi()[npm];
+                    if (!d) return;
                     document.getElementById('isi-npm').value = npm;
                     document.getElementById('isi-npm-teks').textContent = npm;
                     document.getElementById('isi-nama').textContent = d.nama;
@@ -491,7 +527,7 @@
 
                     document.getElementById('bagian-nilai').classList.toggle('d-none', d.nilai.length === 0);
                     document.getElementById('isi-tabel-nilai').innerHTML = d.nilai.map(n => `
-                        <tr>
+                        <tr data-kode="${esc(String(n.kode_mk).trim().toUpperCase())}" data-periode="${esc(n.kode_periode)}">
                             <td><div class="fw-semibold">${esc(n.nama_mk)}</div><span class="badge bg-light text-dark border font-monospace">${esc(n.kode_mk)}</span></td>
                             <td class="small">${esc(n.periode)}</td>
                             <td class="text-center">${esc(n.sks)}</td>
@@ -502,7 +538,7 @@
 
                     document.getElementById('bagian-tidak-lulus').classList.toggle('d-none', d.tidak_lulus.length === 0);
                     document.getElementById('isi-tabel-tidak-lulus').innerHTML = d.tidak_lulus.map(n => `
-                        <tr>
+                        <tr data-kode="${esc(String(n.kode_mk).trim().toUpperCase())}" data-periode="${esc(n.kode_periode)}" data-huruf="${esc(n.huruf)}">
                             <td><div class="fw-semibold">${esc(n.nama_mk)}</div><span class="badge bg-light text-dark border font-monospace">${esc(n.kode_mk)}</span></td>
                             <td class="small">${esc(n.periode)}</td>
                             <td class="text-center">${esc(n.sks)}</td>
@@ -517,7 +553,7 @@
                         const kode = esc(m.kode_mk);
                         const mati = !m.ada_di_master;
                         return `
-                        <tr class="${mati ? 'text-muted' : ''}">
+                        <tr class="${mati ? 'text-muted' : ''}" data-kode="${kode}" data-krs-baru="1">
                             <td><input class="form-check-input centang-krs" type="checkbox" name="krs[${kode}][tambah]" value="1" id="krs-${kode}"
                                 ${mati ? 'disabled' : ''} aria-label="Tambah KRS ${esc(m.nama_mk)}"></td>
                             <td><label for="krs-${kode}" class="fw-semibold mb-0">${esc(m.nama_mk)}</label><br>
@@ -545,6 +581,70 @@
                     }, 350);
                 });
 
+                // ---- Isi otomatis dari PDDikti ----
+                const urlPddikti = @json(route('wisuda.transkrip.pddikti'));
+                const keterangan = (tr, html) => {
+                    let el = tr.querySelector('.info-pddikti');
+                    if (!el) {
+                        el = document.createElement('div');
+                        el.className = 'small info-pddikti';
+                        tr.children[tr.dataset.krsBaru ? 1 : 0].appendChild(el); // sel nama matakuliah
+                    }
+                    el.innerHTML = html;
+                };
+
+                document.getElementById('isi-pddikti').addEventListener('click', async function() {
+                    const npm = document.getElementById('isi-npm').value;
+                    const teks = this.innerHTML;
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Mengambil...';
+                    try {
+                        const url = new URL(urlPddikti);
+                        url.searchParams.set('npm', npm);
+                        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                        const res = await resp.json().catch(() => ({}));
+                        if (!resp.ok || !res.success) throw new Error(res.message || '✕ Gagal memuat data dari PDDikti. Periksa koneksi Anda.');
+                        const nilai = Array.isArray(res.nilai) ? {} : res.nilai;
+                        let terisi = 0;
+
+                        form.querySelectorAll('tbody tr[data-kode]').forEach(tr => {
+                            const baris = nilai[tr.dataset.kode] || [];
+                            if (!baris.length) { keterangan(tr, '<span class="text-muted">Tidak ada di PDDikti</span>'); return; }
+                            const p = baris.find(b => b.periode === tr.dataset.periode) || baris[baris.length - 1];
+                            const label = `PDDikti: <strong>${esc(p.nilai_huruf || '-')}</strong>${p.nilai_angka !== null ? ' (' + esc(p.nilai_angka) + ')' : ''} · ${esc(p.periode)}`;
+                            if (p.nilai_angka === null) { keterangan(tr, `<span class="text-muted">${label} — tanpa nilai angka</span>`); return; }
+                            if (tr.dataset.huruf && String(p.nilai_huruf).toUpperCase() === tr.dataset.huruf.toUpperCase()) {
+                                keterangan(tr, `<span class="text-muted">${label} — sama dengan SIADE</span>`);
+                                return;
+                            }
+
+                            if (tr.dataset.krsBaru) {
+                                const centang = tr.querySelector('.centang-krs');
+                                if (centang.disabled) { keterangan(tr, `<span class="text-muted">${label}</span>`); return; }
+                                centang.checked = true;
+                                centang.dispatchEvent(new Event('change', { bubbles: true }));
+                                const sel = tr.querySelector('.pilih-periode');
+                                if (![...sel.options].some(o => o.value === p.periode)) sel.add(new Option(p.periode, p.periode));
+                                sel.value = p.periode;
+                            }
+                            const input = tr.querySelector('.input-nilai');
+                            input.value = p.nilai_angka;
+                            pratinjau(input);
+                            keterangan(tr, `<span class="text-primary">${label}</span>`);
+                            terisi++;
+                        });
+
+                        toast(terisi ? 'success' : 'warning', terisi
+                            ? `✓ ${terisi} isian diambil dari PDDikti. Periksa lalu klik Simpan.`
+                            : '⚠ Tidak ada nilai PDDikti yang bisa diisikan untuk mahasiswa ini.');
+                    } catch (err) {
+                        toast('error', err.message);
+                    } finally {
+                        this.disabled = false;
+                        this.innerHTML = teks;
+                    }
+                });
+
                 form.addEventListener('input', (e) => { if (e.target.classList.contains('input-nilai')) pratinjau(e.target); });
                 form.addEventListener('change', (e) => {
                     if (!e.target.classList.contains('centang-krs')) return;
@@ -558,16 +658,45 @@
                 form.addEventListener('submit', (e) => {
                     const adaNilai = [...form.querySelectorAll('#isi-tabel-nilai .input-nilai, #isi-tabel-tidak-lulus .input-nilai')].some(i => i.value !== '');
                     const adaKrs = form.querySelectorAll('.centang-krs:checked').length > 0;
+                    e.preventDefault();
                     if (!form.checkValidity() || (!adaNilai && !adaKrs)) {
-                        e.preventDefault();
                         form.reportValidity();
                         toast('warning', '⚠ Periksa kembali isian form Anda.');
                         return;
                     }
+                    simpan();
+                });
+
+                // Simpan lewat AJAX; jika berhasil, tutup jendela lalu perbarui tabel di tempat
+                async function simpan() {
                     const btn = form.querySelector('button[type="submit"]');
                     btn.disabled = true;
                     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
-                });
+                    try {
+                        const resp = await fetch(form.action, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            body: new FormData(form),
+                        });
+                        const res = await resp.json().catch(() => ({}));
+                        if (resp.status === 422 && res.errors) {
+                            toast('warning', '⚠ Periksa kembali isian form Anda.');
+                            return;
+                        }
+                        if (res.message) toast('success', res.message);
+                        if (res.error) toast(res.error.startsWith('⚠') ? 'warning' : 'error', res.error);
+                        if (!res.message && !res.error) toast('error', '✕ Gagal menyimpan data. Coba lagi.');
+                        if (res.success) {
+                            modal.hide();
+                            await muatUlang();
+                        }
+                    } catch (err) {
+                        toast('error', '✕ Gagal menyimpan data. Periksa koneksi Anda.');
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bx bx-save me-1"></i>Simpan';
+                    }
+                }
             })();
         @endif
 
