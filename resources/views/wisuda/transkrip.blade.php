@@ -332,6 +332,15 @@
                                 <td class="text-center fw-semibold {{ $b['tidak_lulus'] ? 'text-danger' : '' }}">
                                     @if ($b['punya_nilai'])
                                         {{ $b['nilai_huruf'] }}
+                                        @if ($b['tidak_lulus'] && $b['diambil'])
+                                            <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 ms-1 tombol-nilai no-print"
+                                                data-krs="{{ $b['krs_id'] }}" data-nama="{{ $b['nama_mk'] }}" data-kode="{{ $b['kode_mk'] }}"
+                                                data-periode="{{ $b['nama_periode'] }}" data-lama="{{ $b['nilai_huruf'] }}"
+                                                data-lama-angka="{{ $b['nilai_angka'] !== null ? number_format($b['nilai_angka'], 2) : '' }}"
+                                                title="Perbaiki nilai tidak lulus">
+                                                <i class="bx bx-revision"></i> Perbaiki
+                                            </button>
+                                        @endif
                                     @else
                                         <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 tombol-nilai no-print"
                                             data-krs="{{ $b['krs_id'] }}" data-nama="{{ $b['nama_mk'] }}" data-kode="{{ $b['kode_mk'] }}"
@@ -478,6 +487,12 @@
                                                 data-periode="">
                                                 <i class="bx bx-edit-alt"></i> Isi Nilai
                                             </button>
+                                        @elseif ($mk['status'] === 'tidak_lulus' && $mk['krs_id'])
+                                            <button type="button" class="btn btn-sm btn-outline-warning tombol-nilai"
+                                                data-krs="{{ $mk['krs_id'] }}" data-nama="{{ $mk['nama_mk'] }}" data-kode="{{ $mk['kode_mk'] }}"
+                                                data-periode="" data-lama="{{ $mk['nilai_lama'] }}">
+                                                <i class="bx bx-revision"></i> Perbaiki Nilai
+                                            </button>
                                         @endif
                                     </td>
                                 </tr>
@@ -520,6 +535,10 @@
                             <div class="fw-semibold" id="nilai-nama"></div>
                             <span class="badge bg-light text-dark border font-monospace" id="nilai-kode"></span>
                             <span class="small text-muted ms-1" id="nilai-periode"></span>
+                        </div>
+                        <div class="alert alert-warning small py-2 d-none" id="nilai-info-lama">
+                            Nilai sekarang: <strong id="nilai-lama"></strong> (tidak lulus). Nilai perbaikan akan menggantikan nilai ini di KRS;
+                            nilai lama dicatat di riwayat perbaikan.
                         </div>
                         <label for="nilai-angka" class="form-label">Nilai Angka (0–100) <span class="text-danger">*</span></label>
                         <input type="number" name="nilai_angka" id="nilai-angka" class="form-control input-nilai" min="0" max="100" step="0.01" required
@@ -698,6 +717,13 @@
                         const d = tNilai.dataset;
                         document.getElementById('nilai-krs-id').value = d.krs;
                         isi('nilai-nama', d.nama); isi('nilai-kode', d.kode); isi('nilai-periode', d.periode);
+                        // Mode perbaikan (nilai tidak lulus) vs isi nilai kosong
+                        const perbaikan = !!d.lama;
+                        document.getElementById('judul-modal-nilai').innerHTML = perbaikan
+                            ? '<i class="bx bx-revision me-1"></i>Perbaiki Nilai Tidak Lulus'
+                            : '<i class="bx bx-edit-alt me-1"></i>Isi Nilai';
+                        document.getElementById('nilai-info-lama').classList.toggle('d-none', !perbaikan);
+                        isi('nilai-lama', (d.lama || '') + (d.lamaAngka ? ` / ${d.lamaAngka}` : ''));
                         const inp = document.getElementById('nilai-angka');
                         inp.value = ''; inp.dispatchEvent(new Event('input'));
                         modalNilai.show();

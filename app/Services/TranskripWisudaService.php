@@ -198,7 +198,7 @@ class TranskripWisudaService
      *
      * @return string|null pesan alasan jika ditolak, null jika berhasil
      */
-    public function simpanNilai(string $npm, int $krsId, float $nilaiAngka): ?string
+    public function simpanNilai(string $npm, int $krsId, float $nilaiAngka, ?int $userId = null): ?string
     {
         $mahasiswa = Mahasiswa::where('npm', $npm)->first();
         if (! $mahasiswa) {
@@ -209,8 +209,11 @@ class TranskripWisudaService
         if (! $krs) {
             return 'Data KRS tidak ditemukan.';
         }
-        if ($krs->nilai_huruf !== null && $krs->nilai_huruf !== '') {
-            return 'Matakuliah ini sudah memiliki nilai.';
+
+        // Yang boleh diubah dari menu ini: nilai kosong, atau nilai tidak lulus (perbaikan)
+        $kosong = $krs->nilai_huruf === null || $krs->nilai_huruf === '';
+        if (! $kosong && ! $this->hurufTidakLulus($mahasiswa->kode_program_studi, $krs->nilai_huruf)) {
+            return "Nilai {$krs->nilai_huruf} sudah lulus, tidak bisa diubah dari sini.";
         }
 
         $skala = $this->skalaUntuk($mahasiswa->kode_program_studi, $nilaiAngka);
@@ -218,9 +221,35 @@ class TranskripWisudaService
             return 'Skala nilai prodi untuk nilai '.$nilaiAngka.' tidak ditemukan.';
         }
 
-        KRS::where('id', $krsId)->update($this->kolomNilai($nilaiAngka, $skala));
+        DB::transaction(function () use ($krs, $npm, $nilaiAngka, $skala, $kosong, $userId) {
+            // Nilai baru ditulis langsung ke KRS
+            KRS::where('id', $krs->id)->update($this->kolomNilai($nilaiAngka, $skala));
+
+            DB::table('tbl_wisuda_perbaikan_nilai_log')->insert([
+                'krs_id' => $krs->id,
+                'npm' => $npm,
+                'nilai_angka_lama' => $kosong ? null : $krs->nilai_angka,
+                'nilai_huruf_lama' => $kosong ? null : $krs->nilai_huruf,
+                'nilai_bobot_lama' => $kosong ? null : $krs->nilai_bobot,
+                'nilai_angka_baru' => $nilaiAngka,
+                'nilai_huruf_baru' => $skala->nama,
+                'nilai_bobot_baru' => $skala->bobot,
+                'jenis' => $kosong ? 'isi_kosong' : 'perbaikan',
+                'user_id' => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
 
         return null;
+    }
+
+    private function hurufTidakLulus(string $kodeProdi, string $huruf): bool
+    {
+        return SkalaNilai::where('kode_program_studi', $kodeProdi)
+            ->where('lulus', 'T')
+            ->whereRaw('UPPER(TRIM(nama)) = ?', [strtoupper(trim($huruf))])
+            ->exists();
     }
 
     /**
@@ -357,10 +386,13 @@ class TranskripWisudaService
                 return null;
             }
             $kosong = $baris->firstWhere('punya_nilai', false);
+            $gagal = $baris->firstWhere('tidak_lulus', true);
 
             return $mk + [
                 'status' => $kosong ? 'belum_ada_nilai' : 'tidak_lulus',
-                'krs_id' => $kosong['krs_id'] ?? null,
+                // KRS yang bisa diisi (kosong) atau diperbaiki (tidak lulus) dari menu Wisuda
+                'krs_id' => ($kosong ?? $gagal)['krs_id'] ?? null,
+                'nilai_lama' => $kosong ? null : ($gagal['nilai_huruf'] ?? null),
             ];
         })->filter()->values();
 

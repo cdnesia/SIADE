@@ -224,7 +224,7 @@
                             <th>Mahasiswa</th>
                             <th class="text-center">IPK</th>
                             <th class="text-center">SKS</th>
-                            <th class="text-center">Nilai Kosong</th>
+                            <th class="text-center">Nilai Kosong / Tidak Lulus</th>
                             <th class="text-center">Dobel</th>
                             <th class="text-center">MK Wajib Belum</th>
                             <th>Status</th>
@@ -248,11 +248,21 @@
                                     @endisset
                                 </td>
                                 <td class="text-center">
-                                    @if (count($b['daftar_nilai_kosong']))
-                                        <button type="button" class="btn btn-sm btn-outline-danger text-nowrap tombol-isi"
-                                            data-npm="{{ $b['npm'] }}" data-fokus="nilai" title="Isi nilai yang masih kosong">
-                                            <i class="bx bx-edit-alt"></i> Isi {{ count($b['daftar_nilai_kosong']) }}
-                                        </button>
+                                    @if (count($b['daftar_nilai_kosong']) || count($b['daftar_tidak_lulus']))
+                                        <div class="d-flex flex-column align-items-center gap-1">
+                                            @if (count($b['daftar_nilai_kosong']))
+                                                <button type="button" class="btn btn-sm btn-outline-danger text-nowrap tombol-isi"
+                                                    data-npm="{{ $b['npm'] }}" data-fokus="nilai" title="Isi nilai yang masih kosong">
+                                                    <i class="bx bx-edit-alt"></i> Isi {{ count($b['daftar_nilai_kosong']) }}
+                                                </button>
+                                            @endif
+                                            @if (count($b['daftar_tidak_lulus']))
+                                                <button type="button" class="btn btn-sm btn-outline-warning text-nowrap tombol-isi"
+                                                    data-npm="{{ $b['npm'] }}" data-fokus="tidak-lulus" title="Perbaiki nilai tidak lulus">
+                                                    <i class="bx bx-revision"></i> Perbaiki {{ count($b['daftar_tidak_lulus']) }}
+                                                </button>
+                                            @endif
+                                        </div>
                                     @else
                                         <span class="text-muted">0</span>
                                     @endif
@@ -340,7 +350,7 @@
                     <input type="hidden" name="kembali" value="{{ http_build_query($parameterRekap) }}">
                     <div class="modal-header">
                         <div>
-                            <h6 class="modal-title mb-0" id="judul-modal-isi">Isi Nilai & KRS</h6>
+                            <h6 class="modal-title mb-0" id="judul-modal-isi">Isi / Perbaiki Nilai & KRS</h6>
                             <div class="small text-muted"><span id="isi-nama" class="fw-semibold"></span> · <span id="isi-npm-teks" class="font-monospace"></span></div>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
@@ -355,6 +365,18 @@
                                         <tr><th>Matakuliah</th><th>Periode</th><th class="text-center">SKS</th><th style="width: 140px">Nilai Angka</th><th style="width: 130px">Hasil</th></tr>
                                     </thead>
                                     <tbody id="isi-tabel-nilai"></tbody>
+                                </table>
+                            </div>
+                        </section>
+                        <section id="bagian-tidak-lulus" class="mb-4">
+                            <h6 class="mb-1"><i class="bx bx-revision me-1 text-warning"></i>Perbaikan Nilai Tidak Lulus</h6>
+                            <p class="small text-muted mb-2">Isi nilai perbaikan untuk menggantikan nilai lama di KRS. Nilai lama dicatat di riwayat perbaikan. Baris yang dikosongkan tidak diubah.</p>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr><th>Matakuliah</th><th>Periode</th><th class="text-center">SKS</th><th class="text-center">Nilai Sekarang</th><th style="width: 140px">Nilai Perbaikan</th><th style="width: 130px">Hasil</th></tr>
+                                    </thead>
+                                    <tbody id="isi-tabel-tidak-lulus"></tbody>
                                 </table>
                             </div>
                         </section>
@@ -421,6 +443,7 @@
                     $dataIsi[$b['npm']] = [
                         'nama' => $b['nama'],
                         'nilai' => $b['daftar_nilai_kosong'],
+                        'tidak_lulus' => $b['daftar_tidak_lulus'],
                         'krs' => $b['daftar_belum_diambil'],
                         'url' => route('wisuda.transkrip.index', array_filter([
                             'npm' => $b['npm'], 'angkatan' => $angkatan, 'kurikulum' => $kurikulum_dipilih,
@@ -477,6 +500,18 @@
                             <td class="hasil-nilai"><span class="text-muted">-</span></td>
                         </tr>`).join('');
 
+                    document.getElementById('bagian-tidak-lulus').classList.toggle('d-none', d.tidak_lulus.length === 0);
+                    document.getElementById('isi-tabel-tidak-lulus').innerHTML = d.tidak_lulus.map(n => `
+                        <tr>
+                            <td><div class="fw-semibold">${esc(n.nama_mk)}</div><span class="badge bg-light text-dark border font-monospace">${esc(n.kode_mk)}</span></td>
+                            <td class="small">${esc(n.periode)}</td>
+                            <td class="text-center">${esc(n.sks)}</td>
+                            <td class="text-center"><span class="fw-semibold text-danger">${esc(n.huruf)}</span>${n.angka ? ` <span class="small text-muted">(${esc(n.angka)})</span>` : ''}</td>
+                            <td><input type="number" name="nilai[${n.krs_id}]" class="form-control form-control-sm input-nilai" min="0" max="100" step="0.01"
+                                aria-label="Nilai perbaikan ${esc(n.nama_mk)}" placeholder="0–100"></td>
+                            <td class="hasil-nilai"><span class="text-muted">-</span></td>
+                        </tr>`).join('');
+
                     document.getElementById('bagian-krs').classList.toggle('d-none', d.krs.length === 0);
                     document.getElementById('isi-tabel-krs').innerHTML = d.krs.map(m => {
                         const kode = esc(m.kode_mk);
@@ -504,9 +539,9 @@
 
                     // Fokus ke bagian yang diklik
                     setTimeout(() => {
-                        const target = tombol.dataset.fokus === 'krs' ? 'bagian-krs' : 'bagian-nilai';
+                        const target = { krs: 'bagian-krs', 'tidak-lulus': 'bagian-tidak-lulus' }[tombol.dataset.fokus] || 'bagian-nilai';
                         document.getElementById(target).scrollIntoView({ block: 'start' });
-                        if (target === 'bagian-nilai') form.querySelector('#isi-tabel-nilai .input-nilai')?.focus();
+                        if (target !== 'bagian-krs') document.querySelector(`#${target} .input-nilai`)?.focus();
                     }, 350);
                 });
 
@@ -521,7 +556,7 @@
                 });
 
                 form.addEventListener('submit', (e) => {
-                    const adaNilai = [...form.querySelectorAll('#isi-tabel-nilai .input-nilai')].some(i => i.value !== '');
+                    const adaNilai = [...form.querySelectorAll('#isi-tabel-nilai .input-nilai, #isi-tabel-tidak-lulus .input-nilai')].some(i => i.value !== '');
                     const adaKrs = form.querySelectorAll('.centang-krs:checked').length > 0;
                     if (!form.checkValidity() || (!adaNilai && !adaKrs)) {
                         e.preventDefault();

@@ -181,7 +181,7 @@ class WisudaTranskripController extends Controller
         $kembali = redirect()->route('wisuda.transkrip.index', $this->parameterKembali($request));
 
         try {
-            $alasan = $this->transkrip->simpanNilai($valid['npm'], (int) $valid['krs_id'], (float) $valid['nilai_angka']);
+            $alasan = $this->transkrip->simpanNilai($valid['npm'], (int) $valid['krs_id'], (float) $valid['nilai_angka'], $request->user()?->id);
         } catch (\Throwable $e) {
             report($e);
 

@@ -204,6 +204,16 @@ class WisudaRekapController extends Controller
                     'periode' => $b['nama_periode'],
                     'sks' => $b['sks'],
                 ])->values()->all(),
+                // Nilai tidak lulus pada MK yang dihitung → bisa diperbaiki
+                'daftar_tidak_lulus' => $data['baris']->where('diambil', true)->where('tidak_lulus', true)->map(fn ($b) => [
+                    'krs_id' => $b['krs_id'],
+                    'kode_mk' => $b['kode_mk'],
+                    'nama_mk' => $b['nama_mk'],
+                    'periode' => $b['nama_periode'],
+                    'sks' => $b['sks'],
+                    'huruf' => $b['nilai_huruf'],
+                    'angka' => $b['nilai_angka'] !== null ? number_format((float) $b['nilai_angka'], 2) : null,
+                ])->values()->all(),
                 'daftar_belum_diambil' => collect($data['mk_belum_terpenuhi'] ?? [])->where('status', 'belum_diambil')->map(fn ($m) => [
                     'kode_mk' => $m['kode_mk'],
                     'nama_mk' => $m['nama_mk'],
@@ -272,7 +282,7 @@ class WisudaRekapController extends Controller
                 if ($angka === null || $angka === '') {
                     continue;
                 }
-                $alasan = $this->transkrip->simpanNilai($valid['npm'], (int) $krsId, (float) $angka);
+                $alasan = $this->transkrip->simpanNilai($valid['npm'], (int) $krsId, (float) $angka, $request->user()?->id);
                 $alasan ? $gagal[] = $alasan : $nilaiTersimpan++;
             }
 
