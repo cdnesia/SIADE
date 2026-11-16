@@ -14,6 +14,9 @@ class NeofeederService
 
     private $password;
 
+    /** Penyebab terakhir gagal ambil token, ikut dikirim di error_desc agar mudah didiagnosis */
+    private ?string $galatToken = null;
+
     public function __construct()
     {
         $this->username = config('services.neofeeder.username');
@@ -28,6 +31,14 @@ class NeofeederService
      */
     private function getToken()
     {
+        $this->galatToken = null;
+
+        if (empty($this->api_url) || empty($this->username) || empty($this->password)) {
+            $this->galatToken = 'konfigurasi NEOFEEDER_URL/USERNAME/PASSWORD di .env belum lengkap';
+
+            return null;
+        }
+
         try {
             /** @var Response $response */
             $response = Http::asJson()
@@ -45,14 +56,18 @@ class NeofeederService
                     return $body['data']['token'] ?? null;
                 }
 
+                $this->galatToken = 'ditolak Feeder: '.($body['error_desc'] ?? 'respon tidak dikenal');
                 Log::error('NeofeederService: Gagal mendapatkan token.', ['response' => $body]);
             } else {
+                $this->galatToken = 'HTTP '.$response->status().' dari '.$this->api_url;
                 Log::error('NeofeederService: HTTP request gagal.', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
             }
         } catch (\Exception $e) {
+            // Contoh: "cURL error 28: Connection timed out ..." → masalah jaringan/firewall
+            $this->galatToken = preg_replace('/\s*\(see https?:[^)]*\)/', '', $e->getMessage());
             Log::error('NeofeederService: Exception saat request token.', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -74,7 +89,7 @@ class NeofeederService
         if (! $token) {
             return [
                 'error_code' => 1,
-                'error_desc' => 'Gagal mendapatkan token dari Neofeeder.',
+                'error_desc' => 'Gagal mendapatkan token dari Neofeeder'.($this->galatToken ? ' ('.$this->galatToken.')' : '').'.',
                 'data' => null,
             ];
         }
@@ -189,7 +204,7 @@ class NeofeederService
         if (! $token) {
             return [
                 'error_code' => 1,
-                'error_desc' => 'Gagal mendapatkan token dari Neofeeder.',
+                'error_desc' => 'Gagal mendapatkan token dari Neofeeder'.($this->galatToken ? ' ('.$this->galatToken.')' : '').'.',
                 'data' => null,
             ];
         }
