@@ -715,6 +715,16 @@
                     });
                 }
 
+                // Pesan galat sesuai status HTTP agar penyebabnya jelas (akses, sesi, server)
+                function pesanGalat(resp, res, aksi) {
+                    if (res && res.message && !res.errors) return res.message;
+                    if (resp.status === 403) return `✕ Anda tidak memiliki akses untuk ${aksi}. Minta admin menambahkan permission di menu Permissions.`;
+                    if (resp.status === 419) return '✕ Sesi Anda sudah habis. Muat ulang halaman lalu coba lagi.';
+                    if (resp.status === 404) return '✕ Alamat tidak ditemukan (route belum ada di server). Pastikan file terbaru sudah diunggah.';
+                    if (resp.status >= 500) return `✕ Terjadi kesalahan di server (HTTP ${resp.status}). Periksa storage/logs/laravel.log.`;
+                    return `✕ Gagal ${aksi}. Coba lagi. (HTTP ${resp.status})`;
+                }
+
                 // ---- Filter & pencarian (delegasi, karena isi area diganti saat dimuat ulang) ----
                 function terapkanFilter() {
                     const filter = $id('filter-transkrip');
@@ -785,7 +795,7 @@
                             return;
                         }
                         if (!resp.ok || !res.success) {
-                            toast('error', res.message || '✕ Gagal memproses data. Coba lagi.');
+                            toast('error', pesanGalat(resp, res, 'memproses data ini'));
                             return;
                         }
                         const modal = form.closest('.modal');
@@ -901,9 +911,17 @@
                     if (segarkan) url.searchParams.set('segarkan', 1);
                     const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
                     const res = await resp.json().catch(() => ({}));
-                    if (!resp.ok || !res.success) throw new Error(res.message || '✕ Gagal memuat data dari PDDikti. Periksa koneksi Anda.');
+                    if (!resp.ok || !res.success) throw new Error(pesanGalat(resp, res, 'mengambil nilai PDDikti'));
                     pddikti = Array.isArray(res.nilai) ? {} : res.nilai;
                     return pddikti;
+                }
+
+                // Status satu baris PDDikti dibanding nilai SIADE (d = data tombol: krs, huruf)
+                function statusPddikti(d, b) {
+                    if (!d.krs) return { label: 'Belum ada KRS', kelas: 'bg-info-subtle text-info-emphasis', ket: 'KRS baru akan dibuat dengan nilai PDDikti' };
+                    if (!String(d.huruf || '').trim()) return { label: 'Kosong di SIADE', kelas: 'bg-info-subtle text-info-emphasis', ket: 'Nilai SIADE masih kosong, bisa diisi dari PDDikti' };
+                    if (sama(b.nilai_huruf, d.huruf)) return { label: 'Sama', kelas: 'bg-success-subtle text-success-emphasis', ket: 'Huruf SIADE dan PDDikti sama' };
+                    return { label: 'Berbeda', kelas: 'bg-warning-subtle text-warning-emphasis', ket: 'SIADE dan PDDikti punya nilai yang berbeda' };
                 }
 
                 // Baris PDDikti yang dipakai untuk satu MK: periode sama, kalau tidak ada yang terakhir
@@ -913,7 +931,7 @@
                 // Isi kolom "PDDikti" di tabel transkrip dengan huruf PDDikti (hijau = sama, oranye = beda)
                 function tandaiPddikti() {
                     if (!pddikti) return;
-                    let beda = 0, tidakAda = 0;
+                    let beda = 0, tidakAda = 0, kosong = 0;
                     area.querySelectorAll('.sel-pddikti').forEach(td => {
                         const baris = pddikti[td.dataset.kode] || [];
                         const tombol = td.querySelector('.tombol-pddikti');
@@ -923,11 +941,15 @@
                             label = '<span class="small text-muted">Tidak ada</span>';
                         } else {
                             const p = pasangan(baris, td.dataset.periode);
-                            const cocok = sama(p.nilai_huruf, td.dataset.huruf);
-                            if (!cocok) beda++;
-                            label = `<span class="fw-semibold ${cocok ? 'text-success' : 'text-warning'}">${esc(p.nilai_huruf || '-')}</span>`
+                            const siadeKosong = !String(td.dataset.huruf || '').trim();
+                            const cocok = !siadeKosong && sama(p.nilai_huruf, td.dataset.huruf);
+                            if (siadeKosong) kosong++; else if (!cocok) beda++;
+                            const warna = cocok ? 'text-success' : (siadeKosong ? 'text-info' : 'text-warning');
+                            const ket = cocok ? 'Sama dengan SIADE' : (siadeKosong ? 'Nilai SIADE kosong' : 'Berbeda dengan SIADE');
+                            label = `<span class="fw-semibold ${warna}" title="${ket}">${esc(p.nilai_huruf || '-')}</span>`
                                 + (p.nilai_angka !== null ? ` <span class="small text-muted">${esc(p.nilai_angka)}</span>` : '')
-                                + (cocok ? ' <i class="bx bx-check text-success"></i>' : '');
+                                + (cocok ? ' <i class="bx bx-check text-success"></i>' : '')
+                                + (siadeKosong ? '<div class="small text-info">kosong di SIADE</div>' : '');
                         }
                         td.innerHTML = `<div>${label}</div>`;
                         if (tombol) {
@@ -935,7 +957,7 @@
                             td.appendChild(tombol);
                         }
                     });
-                    return { beda, tidakAda };
+                    return { beda, tidakAda, kosong };
                 }
 
                 async function bandingkanSemua(tombol) {
@@ -945,8 +967,11 @@
                     try {
                         await ambilPddikti(true);
                         const h = tandaiPddikti();
-                        toast(h.beda ? 'warning' : 'success', h.beda
-                            ? `⚠ ${h.beda} matakuliah nilainya berbeda dengan PDDikti (kolom PDDikti berwarna oranye).`
+                        const bagian = [];
+                        if (h.beda) bagian.push(`${h.beda} MK nilainya berbeda (oranye)`);
+                        if (h.kosong) bagian.push(`${h.kosong} MK kosong di SIADE tapi ada di PDDikti (biru)`);
+                        toast(bagian.length ? 'warning' : 'success', bagian.length
+                            ? `⚠ ${bagian.join(', ')}.`
                             : '✓ Semua nilai yang ada di PDDikti sama dengan SIADE.');
                     } catch (err) {
                         toast('error', err.message);
@@ -974,7 +999,7 @@
                                 <th class="text-center">Angka</th><th class="text-center">Huruf PDDikti</th><th class="text-center">Hasil di SIADE</th><th class="text-center">Status</th></tr></thead>
                             <tbody>${baris.map((b, i) => {
                                 const s = b.nilai_angka !== null ? hurufSiade(b.nilai_angka) : null;
-                                const cocok = d.krs && sama(b.nilai_huruf, d.huruf);
+                                const status = statusPddikti(d, b);
                                 return `<tr>
                                     <td><input class="form-check-input" type="radio" name="periode" value="${esc(b.periode)}" id="pd-${i}" ${b === dipilih ? 'checked' : ''} required></td>
                                     <td><label for="pd-${i}" class="mb-0">${esc(b.periode)}</label></td>
@@ -982,7 +1007,7 @@
                                     <td class="text-center">${b.nilai_angka !== null ? esc(b.nilai_angka) : '-'}</td>
                                     <td class="text-center fw-semibold">${esc(b.nilai_huruf || '-')}</td>
                                     <td class="text-center">${s ? `<span class="fw-semibold ${s.lulus === 'T' ? 'text-danger' : ''}">${esc(s.nama)}</span> <span class="small text-muted">(${parseFloat(s.bobot).toFixed(2)})</span>` : '<span class="small text-muted">dari huruf</span>'}</td>
-                                    <td class="text-center">${cocok ? '<span class="badge bg-success-subtle text-success-emphasis badge-titik">Sama</span>' : '<span class="badge bg-warning-subtle text-warning-emphasis badge-titik">Berbeda</span>'}</td>
+                                    <td class="text-center"><span class="badge ${status.kelas} badge-titik" title="${esc(status.ket)}">${status.label}</span></td>
                                 </tr>`;
                             }).join('')}</tbody>
                         </table></div>
@@ -1042,7 +1067,7 @@
                         // Kembalikan pilihan ke kondisi sebelum diklik
                         if (sebelumnya) sebelumnya.checked = true;
                         grupRadio.forEach(el => el.disabled = false);
-                        toast('error', '✕ Gagal memperbarui data. Coba lagi.');
+                        toast('error', err.message || '✕ Gagal memperbarui data. Coba lagi.');
                     }
                 });
             })();

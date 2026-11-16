@@ -490,6 +490,16 @@
                         icon: tipe === 'success' ? 'bx bx-check-circle' : (tipe === 'warning' ? 'bx bx-error' : 'bx bx-x-circle') });
                 }
 
+                // Pesan galat sesuai status HTTP agar penyebabnya jelas (akses, sesi, server)
+                function pesanGalat(resp, res, aksi) {
+                    if (res && res.message && !res.errors) return res.message;
+                    if (resp.status === 403) return `✕ Anda tidak memiliki akses untuk ${aksi}. Minta admin menambahkan permission di menu Permissions.`;
+                    if (resp.status === 419) return '✕ Sesi Anda sudah habis. Muat ulang halaman lalu coba lagi.';
+                    if (resp.status === 404) return '✕ Alamat tidak ditemukan (route belum ada di server). Pastikan file terbaru sudah diunggah.';
+                    if (resp.status >= 500) return `✕ Terjadi kesalahan di server (HTTP ${resp.status}). Periksa storage/logs/laravel.log.`;
+                    return `✕ Gagal ${aksi}. Coba lagi. (HTTP ${resp.status})`;
+                }
+
                 // Muat ulang ringkasan + tabel tanpa reload halaman (posisi scroll tetap)
                 async function muatUlang() {
                     const url = new URL(window.location.href);
@@ -607,7 +617,7 @@
                         url.searchParams.set('npm', npm);
                         const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
                         const res = await resp.json().catch(() => ({}));
-                        if (!resp.ok || !res.success) throw new Error(res.message || '✕ Gagal memuat data dari PDDikti. Periksa koneksi Anda.');
+                        if (!resp.ok || !res.success) throw new Error(pesanGalat(resp, res, 'mengambil nilai PDDikti'));
                         const nilai = Array.isArray(res.nilai) ? {} : res.nilai;
                         let terisi = 0;
 
@@ -689,7 +699,7 @@
                         }
                         if (res.message) toast('success', res.message);
                         if (res.error) toast(res.error.startsWith('⚠') ? 'warning' : 'error', res.error);
-                        if (!res.message && !res.error) toast('error', '✕ Gagal menyimpan data. Coba lagi.');
+                        if (!res.message && !res.error) toast('error', pesanGalat(resp, res, 'menyimpan data'));
                         if (res.success) {
                             modal.hide();
                             await muatUlang();

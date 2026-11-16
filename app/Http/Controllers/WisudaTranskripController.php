@@ -121,7 +121,7 @@ class WisudaTranskripController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return response()->json(['success' => false, 'message' => 'Gagal memperbarui data. Coba lagi.'], 500);
+            return response()->json(['success' => false, 'message' => '✕ Gagal memperbarui data. Coba lagi. (Alasan: '.$this->alasanGalat($e).')'], 500);
         }
 
         if (! $berhasil) {
@@ -161,7 +161,7 @@ class WisudaTranskripController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $this->balas($request, false, '✕ Gagal menghapus data. Coba lagi.', 500);
+            return $this->balas($request, false, '✕ Gagal menghapus data. Coba lagi. (Alasan: '.$this->alasanGalat($e).')', 500);
         }
 
         return $alasan !== null
@@ -185,7 +185,7 @@ class WisudaTranskripController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $this->balas($request, false, '✕ Gagal memperbarui data. Coba lagi.', 500);
+            return $this->balas($request, false, '✕ Gagal memperbarui data. Coba lagi. (Alasan: '.$this->alasanGalat($e).')', 500);
         }
 
         return $alasan
@@ -217,7 +217,7 @@ class WisudaTranskripController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $this->balas($request, false, '✕ Gagal menambahkan data. Coba lagi.', 500);
+            return $this->balas($request, false, '✕ Gagal menambahkan data. Coba lagi. (Alasan: '.$this->alasanGalat($e).')', 500);
         }
 
         return $alasan
@@ -273,7 +273,7 @@ class WisudaTranskripController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $this->balas($request, false, '✕ Gagal memperbarui data. Coba lagi.', 500);
+            return $this->balas($request, false, '✕ Gagal memperbarui data. Coba lagi. (Alasan: '.$this->alasanGalat($e).')', 500);
         }
 
         if ($alasan) {
@@ -297,7 +297,7 @@ class WisudaTranskripController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $this->balas($request, false, '✕ Gagal menghapus data. Coba lagi.', 500);
+            return $this->balas($request, false, '✕ Gagal menghapus data. Coba lagi. (Alasan: '.$this->alasanGalat($e).')', 500);
         }
 
         return $this->balas($request, true, '✓ Data berhasil dihapus — pilihan dobel dikembalikan ke otomatis');
@@ -322,5 +322,23 @@ class WisudaTranskripController extends Controller
     private function parameterKembali(Request $request): array
     {
         return array_filter($request->only(['npm', 'angkatan', 'kurikulum', 'rekap']), fn ($v) => $v !== null && $v !== '');
+    }
+
+    /**
+     * Alasan singkat dari exception untuk ditampilkan ke admin (tanpa query SQL lengkap),
+     * mis. tabel belum dimigrasi di server.
+     */
+    private function alasanGalat(\Throwable $e): string
+    {
+        if ($e instanceof \Illuminate\Database\QueryException) {
+            $pesan = $e->errorInfo[2] ?? $e->getPrevious()?->getMessage() ?? 'kesalahan database';
+            if (preg_match("/Table '[^.]+\\.([^']+)' doesn't exist/", $pesan, $m)) {
+                return "Tabel {$m[1]} belum ada di database. Jalankan php artisan migrate di server.";
+            }
+
+            return 'Database: '.\Illuminate\Support\Str::limit($pesan, 200);
+        }
+
+        return \Illuminate\Support\Str::limit(class_basename($e).': '.$e->getMessage(), 200);
     }
 }

@@ -306,7 +306,7 @@ class WisudaRekapController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return $this->balas($request, $redirect, null, '✕ Gagal menyimpan data. Coba lagi.', 500);
+            return $this->balas($request, $redirect, null, '✕ Gagal menyimpan data. Coba lagi. (Alasan: '.$this->alasanGalat($e).')', 500);
         }
 
         if ($nilaiTersimpan === 0 && $krsTersimpan === 0 && empty($gagal)) {
@@ -352,5 +352,23 @@ class WisudaRekapController extends Controller
             'perlu-dicek' => ! $b['siap'],
             default => in_array($filter, $b['masalah'], true),
         };
+    }
+
+    /**
+     * Alasan singkat dari exception untuk ditampilkan ke admin (tanpa query SQL lengkap),
+     * mis. tabel belum dimigrasi di server.
+     */
+    private function alasanGalat(\Throwable $e): string
+    {
+        if ($e instanceof \Illuminate\Database\QueryException) {
+            $pesan = $e->errorInfo[2] ?? $e->getPrevious()?->getMessage() ?? 'kesalahan database';
+            if (preg_match("/Table '[^.]+\\.([^']+)' doesn't exist/", $pesan, $m)) {
+                return "Tabel {$m[1]} belum ada di database. Jalankan php artisan migrate di server.";
+            }
+
+            return 'Database: '.\Illuminate\Support\Str::limit($pesan, 200);
+        }
+
+        return \Illuminate\Support\Str::limit(class_basename($e).': '.$e->getMessage(), 200);
     }
 }
