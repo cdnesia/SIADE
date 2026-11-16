@@ -16,8 +16,7 @@ use Illuminate\Support\Facades\DB;
  * Menyusun transkrip nilai untuk keperluan wisuda dari tbl_mahasiswa_krs,
  * mendeteksi matakuliah dobel, lalu menghitung IPK dari matakuliah yang diambil.
  *
- * Matakuliah dianggap dobel jika kode matakuliahnya sama ATAU nama matakuliahnya
- * sama (setelah dinormalisasi), karena pergantian kurikulum bisa mengubah kode.
+ * Matakuliah dianggap dobel hanya jika kode matakuliahnya sama.
  */
 class TranskripWisudaService
 {
@@ -419,39 +418,13 @@ class TranskripWisudaService
      */
     private function cariDobel(array &$baris): array
     {
-        $induk = array_keys($baris);
-        $cari = function ($i) use (&$induk, &$cari) {
-            return $induk[$i] === $i ? $i : ($induk[$i] = $cari($induk[$i]));
-        };
-        $gabung = function ($a, $b) use (&$induk, $cari) {
-            $induk[$cari($a)] = $cari($b);
-        };
-
-        $pertamaKode = [];
-        $pertamaNama = [];
-        foreach ($baris as $i => $b) {
-            $kode = strtolower(trim($b['kode_mk']));
-            $nama = preg_replace('/[^a-z0-9]/', '', strtolower($b['nama_mk']));
-
-            if ($kode !== '' && $kode !== '-') {
-                if (isset($pertamaKode[$kode])) {
-                    $gabung($i, $pertamaKode[$kode]);
-                } else {
-                    $pertamaKode[$kode] = $i;
-                }
-            }
-            if ($nama !== '') {
-                if (isset($pertamaNama[$nama])) {
-                    $gabung($i, $pertamaNama[$nama]);
-                } else {
-                    $pertamaNama[$nama] = $i;
-                }
-            }
-        }
-
+        // Dobel hanya jika kode matakuliahnya sama (huruf besar/kecil dan spasi di awal/akhir diabaikan)
         $kelompok = [];
         foreach ($baris as $i => $b) {
-            $kelompok[$cari($i)][] = $i;
+            $kode = strtolower(trim($b['kode_mk']));
+            if ($kode !== '' && $kode !== '-') {
+                $kelompok[$kode][] = $i;
+            }
         }
 
         $grup = [];
