@@ -15,6 +15,11 @@ class KurikulumFeederService
 {
     private const LAMA_CACHE = 3600; // detik
 
+    /** Setelah Feeder gagal dihubungi, jangan coba lagi selama ini (detik) agar halaman tidak menggantung */
+    private const JEDA_SETELAH_GAGAL = 120;
+
+    private const KUNCI_GAGAL = 'feeder.terakhir-gagal';
+
     public function __construct(protected NeofeederService $feeder) {}
 
     /**
@@ -116,6 +121,11 @@ class KurikulumFeederService
     {
         if ($segarkan) {
             Cache::forget($kunci);
+            Cache::forget(self::KUNCI_GAGAL);
+        }
+
+        if (! Cache::has($kunci) && ($gagal = Cache::get(self::KUNCI_GAGAL))) {
+            throw new RuntimeException($gagal.' (dicoba lagi otomatis setelah 2 menit, atau klik Muat Ulang Feeder)');
         }
 
         return Cache::remember($kunci, self::LAMA_CACHE, $ambilData);
@@ -138,8 +148,11 @@ class KurikulumFeederService
         }
 
         if ((int) ($hasil['error_code'] ?? 1) !== 0) {
+            $pesan = "Neo Feeder $aksi gagal: ".($hasil['error_desc'] ?? 'tanpa keterangan');
+            Cache::put(self::KUNCI_GAGAL, $pesan, self::JEDA_SETELAH_GAGAL);
+
             // Lempar exception supaya hasil gagal tidak ikut tersimpan di cache
-            throw new RuntimeException("Neo Feeder $aksi gagal: ".($hasil['error_desc'] ?? 'tanpa keterangan'));
+            throw new RuntimeException($pesan);
         }
 
         return $hasil['data'] ?? [];

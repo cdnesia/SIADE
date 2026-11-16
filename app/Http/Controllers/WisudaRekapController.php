@@ -170,7 +170,7 @@ class WisudaRekapController extends Controller
             }
         } catch (\Throwable $e) {
             report($e);
-            $d['galat_feeder'] = 'Gagal memuat kurikulum dari Neo Feeder. Rekap ditampilkan tanpa pencocokan kurikulum.';
+            $d['galat_feeder'] = 'Gagal memuat kurikulum dari Neo Feeder. Rekap ditampilkan tanpa pencocokan kurikulum. Alasan: '.$e->getMessage();
         }
 
         $mkLokal = $this->transkrip->matakuliahLokal($kodeProdi, $angkatan);

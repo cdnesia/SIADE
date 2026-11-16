@@ -67,7 +67,7 @@ class WisudaTranskripController extends Controller
             }
         } catch (\Throwable $e) {
             report($e);
-            $d['galat_feeder'] = 'Gagal memuat kurikulum dari Neo Feeder. Transkrip tetap ditampilkan tanpa pencocokan kurikulum.';
+            $d['galat_feeder'] = 'Gagal memuat kurikulum dari Neo Feeder. Transkrip tetap ditampilkan tanpa pencocokan kurikulum. Alasan: '.$e->getMessage();
         }
 
         // Untuk tambah KRS: MK yang tersedia di master SIADE dan periode yang bisa dipilih
