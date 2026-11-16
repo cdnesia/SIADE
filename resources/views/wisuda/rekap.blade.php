@@ -226,7 +226,7 @@
                             <th class="text-center">SKS</th>
                             <th class="text-center">Nilai Kosong / Tidak Lulus</th>
                             <th class="text-center">Dobel</th>
-                            <th class="text-center">MK Wajib Belum</th>
+                            <th class="text-center">MK Kurang</th>
                             <th>Status</th>
                             <th class="text-end"><span class="visually-hidden">Aksi</span></th>
                         </tr>
@@ -278,8 +278,8 @@
                                     @endif
                                 </td>
                                 <td class="text-center">
-                                    @isset($r['wajib_belum'])
-                                        <span class="{{ $r['wajib_belum'] ? 'angka-masalah' : 'text-muted' }}">{{ $r['wajib_belum'] }}</span>
+                                    @isset($r['mk_kurang'])
+                                        <span class="{{ $r['mk_kurang'] ? 'angka-masalah' : 'text-muted' }}">{{ $r['mk_kurang'] }}</span>
                                         @if ($b['belum_diambil'])
                                             <div>
                                                 <button type="button" class="btn btn-link btn-sm p-0 text-nowrap tombol-isi"

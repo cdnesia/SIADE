@@ -19,7 +19,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 class WisudaRekapTranskripSheet implements WithEvents, WithTitle
 {
-    private const KOLOM_MHS = ['No', 'NIM', 'Nama Mahasiswa', 'Angkatan', 'IPK', 'Total SKS', 'Syarat SKS', 'Nilai Kosong', 'MK Wajib Belum', 'Status'];
+    private const KOLOM_MHS = ['No', 'NIM', 'Nama Mahasiswa', 'Angkatan', 'IPK', 'Total SKS', 'Syarat SKS', 'Nilai Kosong', 'MK Kurang', 'Status'];
 
     private const BARIS_HEADER = 4;
 
@@ -72,7 +72,7 @@ class WisudaRekapTranskripSheet implements WithEvents, WithTitle
             $this->info['filter'],
             now()->translatedFormat('d F Y H:i')
         ));
-        $ws->setCellValue('A3', 'Keterangan: "Kosong" = sudah ada KRS tapi nilai belum diisi  ·  sel abu-abu = MK wajib belum ada KRS  ·  huruf merah = tidak lulus  ·  kode oranye = di luar kurikulum. Detail kode lihat sheet "Keterangan MK".');
+        $ws->setCellValue('A3', 'Keterangan: "Kosong" = sudah ada KRS tapi nilai belum diisi  ·  sel abu-abu = MK kurikulum belum ada KRS (kurang)  ·  huruf merah = tidak lulus  ·  kode oranye = di luar kurikulum. Detail kode lihat sheet "Keterangan MK".');
         $ws->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $ws->getStyle('A2:A3')->getFont()->setSize(9)->getColor()->setARGB('FF6B7280');
 
@@ -125,7 +125,10 @@ class WisudaRekapTranskripSheet implements WithEvents, WithTitle
             $ws->setCellValue('F'.$r, $ring['total_sks']);
             $ws->setCellValue('G'.$r, $ring['syarat_sks_lulus'] ?? null);
             $ws->setCellValue('H'.$r, $ring['tanpa_nilai']);
-            $ws->setCellValue('I'.$r, $ring['wajib_belum'] ?? null);
+            $ws->setCellValue('I'.$r, $ring['mk_kurang'] ?? null);
+            if (($ring['mk_kurang'] ?? 0) > 0) {
+                $ws->getStyle('I'.$r)->getFont()->setBold(true)->getColor()->setARGB(self::WARNA_MERAH);
+            }
             $ws->setCellValue('J'.$r, $b['siap'] ? 'Siap wisuda' : 'Perlu dicek');
             $ws->getStyle('J'.$r)->getFont()->setBold(true)->getColor()->setARGB($b['siap'] ? self::WARNA_HIJAU : self::WARNA_MERAH);
             if ($ring['tanpa_nilai'] > 0) {
@@ -141,7 +144,7 @@ class WisudaRekapTranskripSheet implements WithEvents, WithTitle
                 $sel = Coordinate::stringFromColumnIndex($jumlahMhs + $i + 1).$r;
                 $isian = $perKode->get($mk['kode']);
                 if (! $isian) {
-                    if ($mk['wajib']) {
+                    if (! $mk['luar']) {
                         $ws->getStyle($sel)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB(self::WARNA_BELUM_KRS);
                     }
 

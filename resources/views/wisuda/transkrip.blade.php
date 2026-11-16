@@ -185,9 +185,9 @@
                                     </div>
                                 </div>
                                 <div class="col-6 col-md-3">
-                                    <div class="border rounded-3 p-2 h-100 {{ $r['wajib_belum'] ? 'border-danger' : 'border-success' }}">
-                                        <div class="small text-muted">MK Wajib Belum</div>
-                                        <div class="kartu-angka {{ $r['wajib_belum'] ? 'text-danger' : 'text-success' }}">{{ $r['wajib_belum'] }}</div>
+                                    <div class="border rounded-3 p-2 h-100 {{ $r['mk_kurang'] ? 'border-danger' : 'border-success' }}">
+                                        <div class="small text-muted">MK Kurang (belum ada KRS)</div>
+                                        <div class="kartu-angka {{ $r['mk_kurang'] ? 'text-danger' : 'text-success' }}">{{ $r['mk_kurang'] }}</div>
                                     </div>
                                 </div>
                                 <div class="col-6 col-md-3">

@@ -26,7 +26,7 @@ class WisudaRekapController extends Controller
         'perlu-dicek' => 'Perlu dicek',
         'nilai-kosong' => 'Ada nilai kosong',
         'dobel' => 'Dobel belum dipilih',
-        'wajib-belum' => 'MK wajib belum terpenuhi',
+        'mk-kurang' => 'MK kurikulum kurang (belum ada KRS)',
         'sks-kurang' => 'SKS kurang',
         'tidak-lulus' => 'Ada nilai tidak lulus',
     ];
@@ -186,7 +186,7 @@ class WisudaRekapController extends Controller
             $masalah = array_filter([
                 'nilai-kosong' => $r['tanpa_nilai'] > 0,
                 'dobel' => $r['dobel_belum_dipilih'] > 0,
-                'wajib-belum' => $adaKurikulum && $r['wajib_belum'] > 0,
+                'mk-kurang' => $adaKurikulum && $r['mk_kurang'] > 0,
                 'sks-kurang' => $adaKurikulum && $r['total_sks'] < $r['syarat_sks_lulus'],
                 'tidak-lulus' => $r['tidak_lulus'] > 0,
             ]);

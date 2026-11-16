@@ -404,7 +404,8 @@ class TranskripWisudaService
         $data['ringkasan'] += [
             'luar_kurikulum' => $data['baris']->where('diambil', true)->where('di_kurikulum', false)->count(),
             'sks_beda' => $data['baris']->where('diambil', true)->where('sks_beda', true)->count(),
-            'wajib_belum' => $belum->where('wajib', true)->count(),
+            // Semua MK kurikulum Feeder (wajib & pilihan) harus ada di KRS; yang tidak ada = kurang
+            'mk_kurang' => $belum->where('status', 'belum_diambil')->count(),
             'sks_wajib_terpenuhi' => $sksLulusKurikulum->where('wajib', true)->sum('sks'),
             'syarat_sks_lulus' => $kurikulum['jumlah_sks_lulus'],
             'syarat_sks_wajib' => $kurikulum['jumlah_sks_wajib'],
