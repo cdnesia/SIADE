@@ -68,6 +68,9 @@
                     </div>
                     <div class="col-md-6 col-lg-4">
                         <label for="kurikulum" class="form-label">Kurikulum (Neo Feeder)</label>
+                        @if ($daftar_kurikulum->isEmpty() && $kurikulum_dipilih)
+                            <input type="hidden" name="kurikulum" value="{{ $kurikulum_dipilih }}">
+                        @endif
                         <select name="kurikulum" id="kurikulum" class="form-select" @disabled($daftar_kurikulum->isEmpty())>
                             <option value="">
                                 Otomatis sesuai angkatan{{ $kurikulum_otomatis ? ' — ' . $kurikulum_otomatis['nama_kurikulum'] : '' }}
@@ -85,7 +88,7 @@
                 </div>
                 @if ($data)
                     <div class="col-auto">
-                        <a href="{{ route('wisuda.transkrip.index', array_filter(['npm' => $npm, 'angkatan' => $angkatan, 'kurikulum' => $kurikulum_dipilih, 'segarkan' => 1])) }}"
+                        <a href="{{ route('wisuda.transkrip.index', array_filter(['npm' => $npm, 'angkatan' => $angkatan, 'kurikulum' => $kurikulum_dipilih, 'rekap' => $rekap, 'segarkan' => 1])) }}"
                             class="btn btn-outline-secondary" title="Ambil ulang data kurikulum terbaru dari Neo Feeder">
                             <i class="bx bx-refresh me-1"></i>Muat Ulang Feeder
                         </a>
@@ -162,7 +165,7 @@
             <div class="alert alert-warning d-flex align-items-start no-print">
                 <i class="bx bx-wifi-off fs-4 me-2"></i>
                 <div class="flex-grow-1">{{ $galat_feeder }}</div>
-                <a href="{{ route('wisuda.transkrip.index', array_filter(['npm' => $npm, 'angkatan' => $angkatan, 'segarkan' => 1])) }}"
+                <a href="{{ route('wisuda.transkrip.index', array_filter(['npm' => $npm, 'angkatan' => $angkatan, 'kurikulum' => $kurikulum_dipilih, 'rekap' => $rekap, 'segarkan' => 1])) }}"
                     class="btn btn-sm btn-outline-warning ms-2 text-nowrap"><i class="bx bx-refresh me-1"></i>Coba Lagi</a>
             </div>
         @elseif (!empty($data['kurikulum']))

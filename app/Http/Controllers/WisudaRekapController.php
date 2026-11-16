@@ -99,6 +99,8 @@ class WisudaRekapController extends Controller
         $perHalaman = in_array((int) $request->query('per_halaman'), [10, 20, 50, 100], true) ? (int) $request->query('per_halaman') : 20;
         $filter = array_key_exists($request->query('status'), self::FILTER) ? $request->query('status') : 'semua';
         $cari = trim((string) $request->query('cari', ''));
+        // Kurikulum pilihan pengguna dipertahankan apa adanya (termasuk saat Feeder gagal dihubungi)
+        $kurikulumDiminta = preg_match('/^[0-9a-f-]{36}$/i', (string) $request->query('kurikulum')) ? (string) $request->query('kurikulum') : '';
         // Daftar NIM yang akan dicek: boleh dipisah baris baru, koma, titik koma, atau spasi
         $daftarNim = collect(preg_split('/[\s,;]+/', (string) $request->query('nim', ''), -1, PREG_SPLIT_NO_EMPTY))
             ->map(fn ($n) => trim($n))
@@ -122,7 +124,7 @@ class WisudaRekapController extends Controller
             'jumlah_per_filter' => array_fill_keys(array_keys(self::FILTER), 0),
             'kurikulum' => null,
             'daftar_kurikulum' => collect(),
-            'kurikulum_dipilih' => '',
+            'kurikulum_dipilih' => $kurikulumDiminta,
             'galat_feeder' => null,
             'hasil' => null,
             'kurikulum_matakuliah' => collect(),
@@ -159,7 +161,7 @@ class WisudaRekapController extends Controller
 
         $kur = null;
         try {
-            $kur = $this->kurikulumFeeder->tentukan($kodeProdi, $angkatan, $request->query('kurikulum'), $request->boolean('segarkan'));
+            $kur = $this->kurikulumFeeder->tentukan($kodeProdi, $angkatan, $kurikulumDiminta ?: null, $request->boolean('segarkan'));
             $d['daftar_kurikulum'] = $kur['daftar'];
             $d['kurikulum'] = $kur['dipakai'];
             $d['kurikulum_matakuliah'] = $kur['matakuliah'];

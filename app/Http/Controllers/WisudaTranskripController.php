@@ -32,7 +32,9 @@ class WisudaTranskripController extends Controller
         $d['daftar_kurikulum'] = collect();
         $d['pilihan_angkatan'] = [];
         $d['angkatan'] = null;
-        $d['kurikulum_dipilih'] = '';
+        // Kurikulum pilihan pengguna dipertahankan apa adanya (termasuk saat Feeder gagal dihubungi)
+        $kurikulumDiminta = preg_match('/^[0-9a-f-]{36}$/i', (string) $request->query('kurikulum')) ? (string) $request->query('kurikulum') : '';
+        $d['kurikulum_dipilih'] = $kurikulumDiminta;
         $d['kurikulum_otomatis'] = null;
         $d['galat_feeder'] = null;
         $d['url_rekap'] = null;
@@ -56,7 +58,7 @@ class WisudaTranskripController extends Controller
 
         try {
             $kur = $this->kurikulumFeeder->tentukan(
-                $mhs->kode_program_studi, $angkatan, $request->query('kurikulum'), $request->boolean('segarkan')
+                $mhs->kode_program_studi, $angkatan, $kurikulumDiminta ?: null, $request->boolean('segarkan')
             );
             $d['daftar_kurikulum'] = $kur['daftar'];
             $d['kurikulum_otomatis'] = $kur['otomatis'];

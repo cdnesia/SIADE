@@ -75,7 +75,8 @@ class KurikulumFeederService
             'daftar' => $daftar,
             'otomatis' => $otomatis,
             'dipakai' => $dipakai,
-            'manual' => $manual !== null && $manual !== $otomatis,
+            // Tetap dianggap pilihan pengguna walau sama dengan otomatis, agar tidak hilang saat dimuat ulang
+            'manual' => $manual !== null,
             'matakuliah' => $dipakai ? $this->matakuliah($dipakai['id_kurikulum'], $segarkan) : collect(),
         ];
     }

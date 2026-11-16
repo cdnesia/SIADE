@@ -62,6 +62,10 @@
                         @endforeach
                     </select>
                 </div>
+                @if ($daftar_kurikulum->isEmpty() && $kurikulum_dipilih)
+                    {{-- Feeder gagal: pilihan kurikulum tetap dibawa saat form dikirim --}}
+                    <input type="hidden" name="kurikulum" value="{{ $kurikulum_dipilih }}">
+                @endif
                 @if ($daftar_kurikulum->isNotEmpty())
                     <div class="col-md-4">
                         <label for="kurikulum" class="form-label">Kurikulum (Neo Feeder)</label>
