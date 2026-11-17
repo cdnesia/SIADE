@@ -307,10 +307,13 @@
                                 $grupTerakhir = $b['grup'];
                                 $grupInfo = $dobel ? $data['grup'][$b['grup']] : null;
                                 $adaKurikulum = !empty($data['kurikulum']);
-                                $luarKurikulum = $adaKurikulum && !$b['di_kurikulum'];
+                                $mkHilang = !empty($b['mk_hilang']);
+                                $luarKurikulum = $adaKurikulum && !$b['di_kurikulum'] && !$mkHilang;
+                                // Selain dobel, KRS rusak & MK di luar kurikulum juga boleh dihapus
+                                $bisaDihapus = !$dobel && ($mkHilang || $luarKurikulum);
                                 $kategori = trim(implode(' ', array_filter([
                                     $dobel ? 'dobel' : null,
-                                    $luarKurikulum ? 'luar-kurikulum' : null,
+                                    $luarKurikulum || $mkHilang ? 'luar-kurikulum' : null,
                                     !$b['punya_nilai'] ? 'tanpa-nilai' : null,
                                     $b['tidak_lulus'] ? 'tidak-lulus' : null,
                                 ])));
@@ -327,6 +330,12 @@
                                             <i class="bx bx-copy"></i> Dobel {{ count($grupInfo['krs_ids']) }}x
                                         </span>
                                     @endif
+                                    @if ($mkHilang)
+                                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle ms-1"
+                                            title="Jadwal/matakuliah yang dirujuk KRS ini sudah tidak ada di SIADE (KRS #{{ $b['krs_id'] }})">
+                                            <i class="bx bx-unlink"></i> KRS rusak
+                                        </span>
+                                    @endif
                                     @if ($luarKurikulum)
                                         <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1"
                                             title="Kode matakuliah ini tidak ada di kurikulum {{ $data['kurikulum']['nama_kurikulum'] }}">
@@ -338,7 +347,11 @@
                                 <td class="text-center">
                                     {{ $b['sks'] }}
                                     @if (!empty($b['sks_beda']))
-                                        <i class="bx bx-error-circle text-warning" title="SKS di kurikulum Feeder: {{ rtrim(rtrim(number_format($b['sks_kurikulum'], 2), '0'), '.') }}"></i>
+                                        @php $sksFeeder = rtrim(rtrim(number_format($b['sks_kurikulum'], 2), '0'), '.'); @endphp
+                                        <i class="bx bx-error-circle text-warning tooltip-sks" tabindex="0" role="img" style="cursor: help"
+                                            data-bs-toggle="tooltip" data-bs-html="true"
+                                            data-bs-title="<div class='text-start'><strong>SKS berbeda dengan kurikulum Neo Feeder</strong><br>SIADE: {{ $b['sks'] }} SKS · Feeder: {{ $sksFeeder }} SKS<br><span class='opacity-75'>Total SKS &amp; IPK dihitung memakai SKS SIADE. Samakan master matakuliah SIADE atau kurikulum Feeder.</span></div>"
+                                            aria-label="SKS berbeda: SIADE {{ $b['sks'] }} SKS, kurikulum Neo Feeder {{ $sksFeeder }} SKS"></i>
                                     @endif
                                 </td>
                                 <td class="text-center">{{ $b['nilai_angka'] !== null ? number_format($b['nilai_angka'], 2) : '-' }}</td>
@@ -372,7 +385,7 @@
                                                 name="grup-{{ $b['grup'] }}" id="pilih-{{ $b['krs_id'] }}"
                                                 value="{{ $b['krs_id'] }}" {{ $b['diambil'] ? 'checked' : '' }}>
                                             <label class="form-check-label small label-pilih" for="pilih-{{ $b['krs_id'] }}">Ambil</label>
-                                            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 tombol-hapus"
+                                            <button type="button" data-jenis="dobel" class="btn btn-sm btn-link text-danger p-0 ms-2 tombol-hapus"
                                                 title="Hapus matakuliah dobel ini" aria-label="Hapus {{ $b['nama_mk'] }} periode {{ $b['nama_periode'] }}"
                                                 data-krs="{{ $b['krs_id'] }}" data-nama="{{ $b['nama_mk'] }}" data-kode="{{ $b['kode_mk'] }}"
                                                 data-periode="{{ $b['nama_periode'] }}" data-nilai="{{ $b['nilai_huruf'] ?: '-' }}">
@@ -394,6 +407,16 @@
                                         <span class="badge bg-danger-subtle text-danger-emphasis badge-titik">Tidak lulus</span>
                                     @else
                                         <span class="badge bg-success-subtle text-success-emphasis badge-titik">Dihitung</span>
+                                    @endif
+                                    @if ($bisaDihapus)
+                                        <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1 tombol-hapus"
+                                            data-jenis="{{ $mkHilang ? 'rusak' : 'luar' }}"
+                                            title="{{ $mkHilang ? 'Hapus KRS rusak ini' : 'Hapus matakuliah di luar kurikulum ini' }}"
+                                            aria-label="Hapus {{ $b['nama_mk'] }} periode {{ $b['nama_periode'] }}"
+                                            data-krs="{{ $b['krs_id'] }}" data-nama="{{ $mkHilang ? 'Matakuliah tidak ditemukan (KRS #' . $b['krs_id'] . ')' : $b['nama_mk'] }}"
+                                            data-kode="{{ $b['kode_mk'] }}" data-periode="{{ $b['nama_periode'] }}" data-nilai="{{ $b['nilai_huruf'] ?: '-' }}">
+                                            <i class="bx bx-trash fs-5"></i>
+                                        </button>
                                     @endif
                                 </td>
                                 <td class="text-center no-print sel-pddikti" data-kode="{{ strtoupper(trim($b['kode_mk'])) }}"
@@ -670,11 +693,16 @@
                     <input type="hidden" name="rekap" value="{{ $rekap }}">
                     <input type="hidden" name="krs_id" id="hapus-krs-id">
                     <div class="modal-header">
-                        <h6 class="modal-title" id="judul-modal-hapus"><i class="bx bx-trash text-danger me-1"></i>Hapus Matakuliah Dobel</h6>
+                        <h6 class="modal-title" id="judul-modal-hapus"><i class="bx bx-trash text-danger me-1"></i><span id="hapus-judul">Hapus Matakuliah Dobel</span></h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body">
                         <p class="mb-2">Matakuliah berikut akan <strong>dihapus dari KRS</strong> mahasiswa:</p>
+                        <p class="small text-muted mb-2" id="hapus-alasan"></p>
+                        <div class="alert alert-danger small py-2 d-none" id="hapus-peringatan" role="alert">
+                            <i class="bx bx-error me-1"></i><strong>Matakuliah ini sudah bernilai dan ikut dihitung ke IPK.</strong>
+                            Pastikan memang bukan matakuliah wajib yang kodenya berbeda dengan kurikulum Feeder sebelum menghapus.
+                        </div>
                         <table class="table table-sm table-bordered mb-3">
                             <tr><th class="w-25">Matakuliah</th><td><span id="hapus-nama" class="fw-semibold"></span> <span id="hapus-kode" class="badge bg-light text-dark border font-monospace"></span></td></tr>
                             <tr><th>Periode</th><td id="hapus-periode"></td></tr>
@@ -832,6 +860,14 @@
                 });
                 $id('kurikulum')?.addEventListener('change', () => formCek.submit());
 
+                // Tooltip ikon SKS berbeda; dibuat saat disentuh agar tetap jalan
+                // walau tabel dimuat ulang lewat AJAX
+                ['mouseover', 'focusin'].forEach(ev => document.addEventListener(ev, (e) => {
+                    const el = e.target.closest?.('.tooltip-sks');
+                    if (!el || bootstrap.Tooltip.getInstance(el)) return;
+                    bootstrap.Tooltip.getOrCreateInstance(el, { container: 'body' }).show();
+                }));
+
                 // NPM diganti: angkatan, kurikulum & link rekap milik mahasiswa sebelumnya
                 // tidak ikut dikirim, supaya mahasiswa baru memakai angkatan & kurikulumnya sendiri
                 const npmTampil = @json($npm);
@@ -902,6 +938,13 @@
                         $id('hapus-krs-id').value = d.krs;
                         isi('hapus-nama', d.nama); isi('hapus-kode', d.kode);
                         isi('hapus-periode', d.periode); isi('hapus-nilai', d.nilai);
+                        const jenis = {
+                            dobel: ['Hapus Matakuliah Dobel', 'Matakuliah ini diambil lebih dari sekali; salah satu tetap tersisa.'],
+                            luar: ['Hapus Matakuliah di Luar Kurikulum', 'Kode matakuliah ini tidak ada di kurikulum Neo Feeder yang dipakai.'],
+                            rusak: ['Hapus KRS Rusak', 'Jadwal/matakuliah yang dirujuk KRS ini sudah tidak ada di SIADE.'],
+                        }[d.jenis || 'dobel'];
+                        isi('hapus-judul', jenis[0]); isi('hapus-alasan', jenis[1]);
+                        $id('hapus-peringatan').classList.toggle('d-none', d.jenis !== 'luar' || !d.nilai || d.nilai === '-');
                         modalHapus.show();
                     }
                 });

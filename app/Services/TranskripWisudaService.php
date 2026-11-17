@@ -88,6 +88,8 @@ class TranskripWisudaService
                 'nama_periode' => $namaPeriode[$row->kode_tahun_akademik] ?? $row->kode_tahun_akademik,
                 'kode_mk' => $mk->kode_mata_kuliah ?? '-',
                 'nama_mk' => $mk->nama_mata_kuliah_idn ?? '(Matakuliah tidak ditemukan)',
+                // KRS rusak: jadwal/matakuliah yang dirujuk sudah tidak ada
+                'mk_hilang' => $mk === null,
                 'semester_mk' => $mk->semester ?? null,
                 'sks' => $sks,
                 'nilai_angka' => $row->nilai_angka,
@@ -159,17 +161,29 @@ class TranskripWisudaService
     }
 
     /**
-     * Hapus permanen satu baris KRS yang dobel. Hanya boleh untuk anggota grup dobel
-     * milik NPM tersebut (jadi minimal satu baris matakuliah itu selalu tersisa).
+     * Hapus permanen satu baris KRS yang boleh dihapus dari menu Wisuda:
+     *  - anggota grup dobel (minimal satu baris matakuliah itu tetap tersisa),
+     *  - KRS rusak (jadwal/matakuliahnya sudah tidak ada), atau
+     *  - matakuliah di luar kurikulum Feeder yang dipakai ($mkKurikulum, key = kode MK).
      * Isi baris disalin dulu ke tbl_wisuda_hapus_krs_log agar bisa dipulihkan.
      *
+     * @param  Collection|null  $mkKurikulum  null jika kurikulum Feeder tidak tersedia
      * @return string|null pesan alasan jika ditolak, null jika berhasil
      */
-    public function hapus(string $npm, int $krsId, ?int $userId): ?string
+    public function hapus(string $npm, int $krsId, ?int $userId, ?Collection $mkKurikulum = null): ?string
     {
-        $anggotaKrsId = $this->anggotaGrup($npm, $krsId);
-        if ($anggotaKrsId === null) {
-            return 'Hanya matakuliah dobel yang bisa dihapus, dan minimal satu harus tersisa.';
+        $baris = collect($this->susun($npm)['baris'] ?? [])->firstWhere('krs_id', $krsId);
+        if (! $baris) {
+            return 'KRS tidak ditemukan untuk NPM ini.';
+        }
+
+        $bolehDihapus = $baris['grup'] !== null
+            || $baris['mk_hilang']
+            || ($mkKurikulum !== null && ! $mkKurikulum->has(strtoupper(trim($baris['kode_mk']))));
+        if (! $bolehDihapus) {
+            return $mkKurikulum === null
+                ? 'Kurikulum Neo Feeder belum termuat, jadi hanya matakuliah dobel atau KRS rusak yang bisa dihapus.'
+                : 'Hanya matakuliah dobel, di luar kurikulum, atau KRS rusak yang bisa dihapus.';
         }
 
         DB::transaction(function () use ($npm, $krsId, $userId) {

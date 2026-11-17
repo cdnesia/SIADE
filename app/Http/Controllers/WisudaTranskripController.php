@@ -154,10 +154,14 @@ class WisudaTranskripController extends Controller
         $valid = $request->validate([
             'npm' => 'required|string|max:30',
             'krs_id' => 'required|integer',
+            'angkatan' => 'nullable|digits:5',
+            'kurikulum' => 'nullable|string|max:36',
         ]);
 
         try {
-            $alasan = $this->transkrip->hapus($valid['npm'], (int) $valid['krs_id'], $request->user()?->id);
+            $alasan = $this->transkrip->hapus(
+                $valid['npm'], (int) $valid['krs_id'], $request->user()?->id, $this->mkKurikulum($valid)
+            );
         } catch (\Throwable $e) {
             report($e);
 
@@ -167,6 +171,32 @@ class WisudaTranskripController extends Controller
         return $alasan !== null
             ? $this->balas($request, false, '✕ Gagal menghapus data. '.$alasan)
             : $this->balas($request, true, '✓ Data berhasil dihapus');
+    }
+
+    /**
+     * MK kurikulum Feeder yang sama dengan yang tampil di halaman (angkatan & kurikulum
+     * pilihan pengguna), untuk memastikan di server bahwa MK memang di luar kurikulum.
+     * Null jika mahasiswa tidak ada atau Feeder gagal dihubungi.
+     */
+    private function mkKurikulum(array $valid): ?\Illuminate\Support\Collection
+    {
+        $mhs = \App\Models\Mahasiswa::where('npm', $valid['npm'])->first();
+        if (! $mhs) {
+            return null;
+        }
+        $kurikulum = preg_match('/^[0-9a-f-]{36}$/i', (string) ($valid['kurikulum'] ?? '')) ? $valid['kurikulum'] : null;
+
+        try {
+            $kur = $this->kurikulumFeeder->tentukan(
+                $mhs->kode_program_studi, $valid['angkatan'] ?? (string) $mhs->tahun_angkatan, $kurikulum
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+
+        return $kur['dipakai'] ? $kur['matakuliah'] : null;
     }
 
     /**
