@@ -140,11 +140,13 @@ class WisudaRekapTranskripSheet implements WithEvents, WithTitle
 
             // Nilai per kode MK (hanya baris transkrip yang diambil/dihitung)
             $perKode = $b['transkrip']->where('diambil', true)->groupBy(fn ($t) => strtoupper(trim($t['kode_mk'])));
+            // Rekap campuran angkatan: kolom bisa berasal dari kurikulum angkatan lain
+            $kodeKurikulum = isset($b['kode_kurikulum']) ? array_flip($b['kode_kurikulum']) : null;
             foreach ($this->kolomMk as $i => $mk) {
                 $sel = Coordinate::stringFromColumnIndex($jumlahMhs + $i + 1).$r;
                 $isian = $perKode->get($mk['kode']);
                 if (! $isian) {
-                    if (! $mk['luar']) {
+                    if (! $mk['luar'] && ($kodeKurikulum === null || isset($kodeKurikulum[$mk['kode']]))) {
                         $ws->getStyle($sel)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB(self::WARNA_BELUM_KRS);
                     }
 

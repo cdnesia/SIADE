@@ -31,6 +31,9 @@ class WisudaRekapController extends Controller
         'tidak-lulus' => 'Ada nilai tidak lulus',
     ];
 
+    /** Nilai pilihan angkatan untuk mengecek NIM dari berbagai angkatan sekaligus */
+    public const SEMUA_ANGKATAN = 'semua';
+
     public function __construct(
         protected TranskripWisudaService $transkrip,
         protected KurikulumFeederService $kurikulumFeeder,
@@ -58,7 +61,7 @@ class WisudaRekapController extends Controller
         $d['skala_nilai'] = SkalaNilai::where('kode_program_studi', $d['prodi'])
             ->orderByDesc('nilai_mulai')
             ->get(['nama', 'bobot', 'nilai_mulai', 'nilai_sampai', 'lulus']);
-        $d['pilihan_periode'] = TahunAkademik::where('kode_tahun_akademik', '>=', $d['angkatan'])
+        $d['pilihan_periode'] = TahunAkademik::where('kode_tahun_akademik', '>=', $d['angkatan_awal'])
             ->orderByDesc('kode_tahun_akademik')
             ->pluck('nama_tahun_akademik', 'kode_tahun_akademik');
 
@@ -78,13 +81,24 @@ class WisudaRekapController extends Controller
         }
 
         $namaProdi = $d['daftar_prodi']->firstWhere('kode_program_studi', $d['prodi'])->nama_program_studi_idn ?? $d['prodi'];
-        $namaFile = 'Rekap-Transkrip-'.preg_replace('/[^A-Za-z0-9]+/', '-', $namaProdi).'-'.substr($d['angkatan'], 0, 4).'.xlsx';
+        $labelAngkatan = $d['angkatan'] === self::SEMUA_ANGKATAN
+            ? 'Semua ('.collect($d['kurikulum_per_angkatan'])->keys()->map(fn ($a) => substr($a, 0, 4))->unique()->implode(', ').')'
+            : substr($d['angkatan'], 0, 4);
+        $namaFile = 'Rekap-Transkrip-'.preg_replace('/[^A-Za-z0-9]+/', '-', $namaProdi).'-'
+            .($d['angkatan'] === self::SEMUA_ANGKATAN ? 'Semua-Angkatan' : substr($d['angkatan'], 0, 4)).'.xlsx';
+
+        // Campuran angkatan: tiap angkatan memakai kurikulumnya sendiri, judul kurikulum digabung
+        $kurikulum = $d['kurikulum'];
+        if ($d['angkatan'] === self::SEMUA_ANGKATAN && $d['kurikulum_per_angkatan']) {
+            $kurikulum = ['nama_kurikulum' => 'otomatis per angkatan — '.collect($d['kurikulum_per_angkatan'])
+                ->map(fn ($k, $a) => substr($a, 0, 4).': '.($k['nama_kurikulum'] ?? 'tidak tersedia'))->implode('; ')];
+        }
 
         return Excel::download(new WisudaRekapExport(
             $d['tersaring'],
-            $d['kurikulum'],
+            $kurikulum,
             $d['kurikulum_matakuliah'],
-            ['prodi' => $namaProdi, 'angkatan' => substr($d['angkatan'], 0, 4), 'filter' => self::FILTER[$d['status']]],
+            ['prodi' => $namaProdi, 'angkatan' => $labelAngkatan, 'filter' => self::FILTER[$d['status']]],
         ), $namaFile);
     }
 
@@ -95,7 +109,9 @@ class WisudaRekapController extends Controller
     private function hitung(Request $request): array
     {
         $kodeProdi = (string) $request->query('prodi', '');
-        $angkatan = preg_match('/^\d{5}$/', (string) $request->query('angkatan')) ? $request->query('angkatan') : '';
+        // 'semua' = tiap NIM diperiksa dengan angkatan & kurikulumnya sendiri
+        $angkatan = preg_match('/^(\d{5}|'.self::SEMUA_ANGKATAN.')$/', (string) $request->query('angkatan')) ? $request->query('angkatan') : '';
+        $semuaAngkatan = $angkatan === self::SEMUA_ANGKATAN;
         $perHalaman = in_array((int) $request->query('per_halaman'), [10, 20, 50, 100], true) ? (int) $request->query('per_halaman') : 20;
         $filter = array_key_exists($request->query('status'), self::FILTER) ? $request->query('status') : 'semua';
         $cari = trim((string) $request->query('cari', ''));
@@ -113,6 +129,9 @@ class WisudaRekapController extends Controller
             'daftar_angkatan' => collect(),
             'prodi' => $kodeProdi,
             'angkatan' => $angkatan,
+            'semua_angkatan' => $semuaAngkatan,
+            'angkatan_awal' => $angkatan,
+            'kurikulum_per_angkatan' => [],
             'daftar_nim' => $daftarNim,
             'nim_teks' => $daftarNim->implode("\n"),
             'nim_tidak_ada' => [],
@@ -145,7 +164,7 @@ class WisudaRekapController extends Controller
         // Pisahkan NIM: cocok prodi+angkatan (dicek), beda prodi/angkatan, dan tidak terdaftar
         $ditemukan = Mahasiswa::with('prodi')->whereIn('npm', $daftarNim)->get()->keyBy('npm');
         $mahasiswa = $ditemukan
-            ->filter(fn ($m) => $m->kode_program_studi === $kodeProdi && (string) $m->tahun_angkatan === $angkatan)
+            ->filter(fn ($m) => $m->kode_program_studi === $kodeProdi && ($semuaAngkatan || (string) $m->tahun_angkatan === $angkatan))
             ->sortBy(fn ($m) => $daftarNim->search($m->npm))
             ->values();
         $d['nim_tidak_ada'] = $daftarNim->reject(fn ($n) => $ditemukan->has($n))->values()->all();
@@ -159,26 +178,57 @@ class WisudaRekapController extends Controller
 
         $transkrip = $this->transkrip->susunBanyak($mahasiswa);
 
-        $kur = null;
+        // Kurikulum ditentukan per angkatan; kurikulum manual hanya berlaku jika satu angkatan
+        $angkatanDicek = $semuaAngkatan
+            ? $mahasiswa->pluck('tahun_angkatan')->map(fn ($a) => (string) $a)->unique()->sort()->values()
+            : collect([$angkatan]);
+        $d['angkatan_awal'] = $angkatanDicek->first() ?? ($semuaAngkatan ? date('Y').'1' : $angkatan);
+
+        $kurPerAngkatan = [];
+        $mkLokalPerAngkatan = [];
+        $segarkan = $request->boolean('segarkan');
         try {
-            $kur = $this->kurikulumFeeder->tentukan($kodeProdi, $angkatan, $kurikulumDiminta ?: null, $request->boolean('segarkan'));
-            $d['daftar_kurikulum'] = $kur['daftar'];
-            $d['kurikulum'] = $kur['dipakai'];
-            $d['kurikulum_matakuliah'] = $kur['matakuliah'];
-            $d['kurikulum_otomatis'] = $kur['otomatis'];
-            $d['kurikulum_dipilih'] = $kur['manual'] ? $kur['dipakai']['id_kurikulum'] : '';
-            if (! $kur['dipakai']) {
-                $d['galat_feeder'] = 'Kurikulum untuk prodi ini tidak ditemukan di Neo Feeder.';
+            foreach ($angkatanDicek as $angk) {
+                $kurPerAngkatan[$angk] = $this->kurikulumFeeder->tentukan(
+                    $kodeProdi, $angk, $semuaAngkatan ? null : ($kurikulumDiminta ?: null), $segarkan
+                );
+                $segarkan = false; // daftar kurikulum prodi cukup diambil ulang sekali
             }
         } catch (\Throwable $e) {
             report($e);
+            $kurPerAngkatan = [];
             $d['galat_feeder'] = 'Gagal memuat kurikulum dari Neo Feeder. Rekap ditampilkan tanpa pencocokan kurikulum. Alasan: '.$e->getMessage();
         }
+        foreach ($angkatanDicek as $angk) {
+            $mkLokalPerAngkatan[$angk] = $this->transkrip->matakuliahLokal($kodeProdi, $angk);
+        }
 
-        $mkLokal = $this->transkrip->matakuliahLokal($kodeProdi, $angkatan);
+        if ($kurPerAngkatan) {
+            $tanpaKurikulum = collect($kurPerAngkatan)->filter(fn ($k) => ! $k['dipakai'])->keys();
+            if ($tanpaKurikulum->isNotEmpty()) {
+                $d['galat_feeder'] = 'Kurikulum untuk prodi ini tidak ditemukan di Neo Feeder'
+                    .($semuaAngkatan ? ' (angkatan '.$tanpaKurikulum->map(fn ($a) => substr($a, 0, 4))->implode(', ').').' : '.');
+            }
+            $d['kurikulum_per_angkatan'] = collect($kurPerAngkatan)->map(fn ($k) => $k['dipakai'])->all();
+            // Gabungan MK kurikulum semua angkatan (untuk kolom export)
+            $d['kurikulum_matakuliah'] = collect($kurPerAngkatan)
+                ->reduce(fn ($gabung, $k) => $gabung->union($k['matakuliah']), collect());
 
-        $baris = $mahasiswa->map(function ($mhs) use ($transkrip, $kur, $mkLokal) {
+            if (! $semuaAngkatan) {
+                $kur = $kurPerAngkatan[$angkatan];
+                $d['daftar_kurikulum'] = $kur['daftar'];
+                $d['kurikulum'] = $kur['dipakai'];
+                $d['kurikulum_otomatis'] = $kur['otomatis'];
+                $d['kurikulum_dipilih'] = $kur['manual'] ? $kur['dipakai']['id_kurikulum'] : '';
+            } else {
+                $d['kurikulum_dipilih'] = '';
+            }
+        }
+
+        $baris = $mahasiswa->map(function ($mhs) use ($transkrip, $kurPerAngkatan, $mkLokalPerAngkatan) {
             $data = $transkrip[$mhs->npm];
+            $kur = $kurPerAngkatan[(string) $mhs->tahun_angkatan] ?? null;
+            $mkLokal = $mkLokalPerAngkatan[(string) $mhs->tahun_angkatan] ?? collect();
             if ($kur && $kur['dipakai']) {
                 $data = $this->transkrip->cocokkanKurikulum($data, $kur['matakuliah'], $kur['dipakai']);
             }
@@ -229,6 +279,9 @@ class WisudaRekapController extends Controller
                 'masalah' => array_keys($masalah),
                 'siap' => $adaKurikulum && empty($masalah),
                 'angkatan' => $mhs->tahun_angkatan,
+                'kurikulum' => $kur['dipakai'] ?? null,
+                // Kode MK kurikulum mahasiswa ini (export: sel abu-abu hanya untuk MK kurikulumnya sendiri)
+                'kode_kurikulum' => $kur && $kur['dipakai'] ? $kur['matakuliah']->keys()->all() : null,
                 'prodi' => $mhs->prodi->nama_program_studi_idn ?? $mhs->kode_program_studi,
                 'transkrip' => $data['baris'],
             ];

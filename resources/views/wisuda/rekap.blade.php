@@ -55,6 +55,9 @@
                     <label for="angkatan" class="form-label">Tahun Angkatan</label>
                     <select name="angkatan" id="angkatan" class="form-select" required @disabled($daftar_angkatan->isEmpty())>
                         <option value="">{{ $prodi ? 'Pilih angkatan' : 'Pilih prodi dulu' }}</option>
+                        @if ($daftar_angkatan->isNotEmpty())
+                            <option value="semua" @selected($semua_angkatan)>Semua angkatan (sesuai NIM)</option>
+                        @endif
                         @foreach ($daftar_angkatan as $nilai => $jumlah)
                             <option value="{{ $nilai }}" @selected($nilai == $angkatan)>
                                 {{ substr($nilai, 0, 4) }}{{ substr($nilai, 4) === '2' ? ' Genap' : '' }} ({{ $jumlah }} mhs)
@@ -84,7 +87,8 @@
                     <textarea name="nim" id="nim" rows="5" class="form-control font-monospace" required
                         placeholder="Satu NIM per baris (bisa juga dipisah koma/spasi), contoh:&#10;21103160201013&#10;21103160201016&#10;21103160201093">{{ $nim_teks }}</textarea>
                     <div class="form-text"><span id="jumlah-nim">{{ $daftar_nim->count() }}</span> NIM · bisa langsung tempel dari Excel.
-                        Hanya NIM dari prodi & angkatan yang dipilih yang diperiksa.</div>
+                        Hanya NIM dari prodi yang dipilih yang diperiksa. Pilih <strong>Semua angkatan</strong> untuk NIM dari angkatan berbeda —
+                        tiap NIM dicocokkan dengan kurikulum angkatannya sendiri.</div>
                 </div>
                 <div class="col-auto">
                     <button type="submit" class="btn btn-primary"><i class="bx bx-search-alt me-1"></i>Cek NIM</button>
@@ -216,7 +220,15 @@
                         </a>
                     </form>
                 </div>
-                @if ($kurikulum)
+                @if ($semua_angkatan && $kurikulum_per_angkatan)
+                    <div class="small text-muted mt-2">
+                        Dicocokkan otomatis per angkatan:
+                        @foreach ($kurikulum_per_angkatan as $angk => $k)
+                            <span class="text-nowrap">{{ substr($angk, 0, 4) }}{{ substr($angk, 4) === '2' ? ' Genap' : '' }} →
+                                <strong>{{ $k['nama_kurikulum'] ?? 'tidak tersedia' }}</strong>{{ $k ? ' (' . $k['jumlah_sks_lulus'] . ' SKS)' : '' }}</span>{{ $loop->last ? '' : ' ·' }}
+                        @endforeach
+                    </div>
+                @elseif ($kurikulum)
                     <div class="small text-muted mt-2">
                         Dicocokkan dengan <strong>{{ $kurikulum['nama_kurikulum'] }}</strong>
                         · syarat lulus {{ $kurikulum['jumlah_sks_lulus'] }} SKS
@@ -248,6 +260,9 @@
                                 <td>
                                     <div class="fw-semibold">{{ $b['nama'] }}</div>
                                     <span class="badge bg-light text-dark border font-monospace">{{ $b['npm'] }}</span>
+                                    @if ($semua_angkatan)
+                                        <span class="small text-muted">Angkatan {{ substr($b['angkatan'], 0, 4) }}</span>
+                                    @endif
                                 </td>
                                 <td class="text-center fw-semibold">{{ $r['total_sks'] > 0 ? number_format($r['ipk'], 2) : '-' }}</td>
                                 <td class="text-center text-nowrap">
@@ -315,7 +330,7 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
-                                    <a href="{{ route('wisuda.transkrip.index', array_filter(['npm' => $b['npm'], 'angkatan' => $angkatan, 'kurikulum' => $kurikulum_dipilih, 'rekap' => http_build_query($parameterRekap)])) }}"
+                                    <a href="{{ route('wisuda.transkrip.index', array_filter(['npm' => $b['npm'], 'angkatan' => $semua_angkatan ? $b['angkatan'] : $angkatan, 'kurikulum' => $kurikulum_dipilih, 'rekap' => http_build_query($parameterRekap)])) }}"
                                         class="btn btn-sm {{ $b['siap'] ? 'btn-outline-primary' : 'btn-primary' }} text-nowrap">
                                         {{ $b['siap'] ? 'Lihat' : 'Perbaiki' }} <i class="bx bx-chevron-right"></i>
                                     </a>
@@ -326,7 +341,7 @@
                                 <td colspan="9" class="text-center py-5 text-muted">
                                     <i class="bx bx-search-alt fs-1 d-block mb-1"></i>
                                     @if ($total_mahasiswa === 0)
-                                        Tidak ada NIM yang terdaftar di prodi dan angkatan ini. Periksa kembali daftar NIM atau pilihan prodi/angkatan.
+                                        Tidak ada NIM yang terdaftar di prodi{{ $semua_angkatan ? '' : ' dan angkatan' }} ini. Periksa kembali daftar NIM atau pilihan prodi/angkatan.
                                     @else
                                         Tidak ada mahasiswa yang cocok dengan filter/pencarian.
                                         <a href="{{ route('wisuda.rekap.index', $parameterTetap) }}">Tampilkan semua</a>
@@ -359,9 +374,10 @@
                     'tidak_lulus' => $b['daftar_tidak_lulus'],
                     'krs' => $b['daftar_belum_diambil'],
                     'url' => route('wisuda.transkrip.index', array_filter([
-                        'npm' => $b['npm'], 'angkatan' => $angkatan, 'kurikulum' => $kurikulum_dipilih,
+                        'npm' => $b['npm'], 'angkatan' => $semua_angkatan ? $b['angkatan'] : $angkatan, 'kurikulum' => $kurikulum_dipilih,
                         'rekap' => http_build_query($parameterRekap),
                     ])),
+                    'angkatan' => (string) $b['angkatan'],
                 ];
             }
         @endphp
@@ -374,7 +390,7 @@
                 <form action="{{ route('wisuda.rekap.simpan') }}" method="post" class="modal-content" id="form-isi" novalidate>
                     @csrf
                     <input type="hidden" name="npm" id="isi-npm">
-                    <input type="hidden" name="angkatan" value="{{ $angkatan }}">
+                    <input type="hidden" name="angkatan" id="isi-angkatan" value="{{ $angkatan }}">
                     <input type="hidden" name="kembali" value="{{ http_build_query($parameterRekap) }}">
                     <div class="modal-header">
                         <div>
@@ -535,6 +551,7 @@
                     const d = dataIsi()[npm];
                     if (!d) return;
                     document.getElementById('isi-npm').value = npm;
+                    document.getElementById('isi-angkatan').value = d.angkatan; // angkatan mahasiswa ini (rekap bisa campuran)
                     document.getElementById('isi-npm-teks').textContent = npm;
                     document.getElementById('isi-nama').textContent = d.nama;
                     document.getElementById('isi-link-detail').href = d.url;
