@@ -597,6 +597,8 @@ class TranskripWisudaService
             'total_sks' => $totalSks,
             'total_mutu' => round($totalMutu, 2),
             'jumlah_mk' => $dihitung->count(),
+            // Semua KRS yang dipakai di transkrip, termasuk yang nilainya masih kosong
+            'jumlah_krs' => $baris->where('diambil', true)->count(),
             'jumlah_dobel' => count($grup),
             'dobel_belum_dipilih' => collect($grup)->where('sudah_dipilih', false)->count(),
             'tanpa_nilai' => $baris->where('diambil', true)->where('punya_nilai', false)->count(),

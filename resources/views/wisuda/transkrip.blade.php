@@ -144,8 +144,11 @@
                             </div>
                             <div class="col-6 col-md-3">
                                 <div class="border rounded-3 p-2 h-100">
-                                    <div class="small text-muted">Matakuliah</div>
-                                    <div class="kartu-angka" id="r-mk">{{ $r['jumlah_mk'] }}</div>
+                                    <div class="small text-muted">Matakuliah Dihitung</div>
+                                    <div class="kartu-angka" id="r-mk">{{ $r['jumlah_mk'] }}@if ($r['jumlah_krs'] != $r['jumlah_mk'])<span class="fs-6 text-muted">/{{ $r['jumlah_krs'] }}</span>@endif</div>
+                                    @if ($r['jumlah_krs'] != $r['jumlah_mk'])
+                                        <div class="small text-warning-emphasis">{{ $r['jumlah_krs'] - $r['jumlah_mk'] }} belum bernilai</div>
+                                    @endif
                                 </div>
                             </div>
                             <div class="col-6 col-md-3">
