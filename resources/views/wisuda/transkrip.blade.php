@@ -831,6 +831,15 @@
                     formCek.submit();
                 });
                 $id('kurikulum')?.addEventListener('change', () => formCek.submit());
+
+                // NPM diganti: angkatan, kurikulum & link rekap milik mahasiswa sebelumnya
+                // tidak ikut dikirim, supaya mahasiswa baru memakai angkatan & kurikulumnya sendiri
+                const npmTampil = @json($npm);
+                formCek.addEventListener('submit', () => {
+                    if ($id('npm').value.trim() === npmTampil) return;
+                    formCek.querySelectorAll('[name="angkatan"], [name="kurikulum"], [name="rekap"]')
+                        .forEach(el => el.disabled = true);
+                });
                 @if ($galat_feeder && str_starts_with($galat_feeder, 'Gagal'))
                     toast('error', '✕ Gagal memuat data. Periksa koneksi Anda.');
                 @endif
