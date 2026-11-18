@@ -29,6 +29,7 @@ use App\Http\Controllers\TahunAkademikController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\VerifikasiBeasiswaController;
 use App\Http\Controllers\WisudaRekapController;
+use App\Http\Controllers\WisudaRplController;
 use App\Http\Controllers\WisudaTranskripController;
 use Illuminate\Support\Facades\Route;
 
@@ -123,6 +124,8 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::get('wisuda/rekap', [WisudaRekapController::class, 'index'])->name('wisuda.rekap.index');
     Route::post('wisuda/rekap/simpan', [WisudaRekapController::class, 'simpan'])->name('wisuda.rekap.simpan');
     Route::get('wisuda/rekap/export', [WisudaRekapController::class, 'export'])->name('wisuda.rekap.export');
+    Route::get('wisuda/rpl', [WisudaRplController::class, 'index'])->name('wisuda.rpl.index');
+    Route::get('wisuda/rpl/export', [WisudaRplController::class, 'export'])->name('wisuda.rpl.export');
     Route::prefix('wisuda/transkrip')->name('wisuda.transkrip.')->group(function () {
         Route::get('/', [WisudaTranskripController::class, 'index'])->name('index');
         Route::post('/pilih', [WisudaTranskripController::class, 'pilih'])->name('pilih');

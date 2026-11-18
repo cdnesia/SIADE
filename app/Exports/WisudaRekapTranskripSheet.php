@@ -57,6 +57,12 @@ class WisudaRekapTranskripSheet implements WithEvents, WithTitle
 
     private function tulis(Worksheet $ws): void
     {
+        // Mode isi manual (RPL): hanya nilai konversi yang terisi, sel MK lain dibiarkan
+        // putih & kosong agar bisa diketik langsung di Excel
+        $isiManual = ! empty($this->info['isi_manual']);
+        $kolomMhs = $isiManual
+            ? ['No', 'NIM', 'Nama Mahasiswa', 'Angkatan', 'IPK Konversi', 'SKS Konversi', 'Syarat SKS', 'Nilai Kosong', 'MK Belum Ada Nilai', 'Status']
+            : self::KOLOM_MHS;
         $jumlahMhs = count(self::KOLOM_MHS);
         $kolomAkhir = $jumlahMhs + count($this->kolomMk);
         $hurufAkhir = Coordinate::stringFromColumnIndex($kolomAkhir);
@@ -72,12 +78,14 @@ class WisudaRekapTranskripSheet implements WithEvents, WithTitle
             $this->info['filter'],
             now()->translatedFormat('d F Y H:i')
         ));
-        $ws->setCellValue('A3', 'Keterangan: "Kosong" = sudah ada KRS tapi nilai belum diisi  ·  sel abu-abu = MK kurikulum belum ada KRS (kurang)  ·  huruf merah = tidak lulus  ·  kode oranye = di luar kurikulum. Detail kode lihat sheet "Keterangan MK".');
+        $ws->setCellValue('A3', $isiManual
+            ? 'Keterangan: nilai terisi = hasil konversi RPL di Neo Feeder  ·  sel kosong = matakuliah kurikulum yang belum ada nilainya, silakan isi manual (huruf mutu)  ·  kode oranye = di luar kurikulum. IPK & SKS di kolom kiri hanya dari nilai konversi.'
+            : 'Keterangan: "Kosong" = sudah ada KRS tapi nilai belum diisi  ·  sel abu-abu = MK kurikulum belum ada KRS (kurang)  ·  huruf merah = tidak lulus  ·  kode oranye = di luar kurikulum. Detail kode lihat sheet "Keterangan MK".');
         $ws->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $ws->getStyle('A2:A3')->getFont()->setSize(9)->getColor()->setARGB('FF6B7280');
 
         // ---- Header data mahasiswa (digabung 3 baris) ----
-        foreach (self::KOLOM_MHS as $i => $label) {
+        foreach ($kolomMhs as $i => $label) {
             $h = Coordinate::stringFromColumnIndex($i + 1);
             $ws->setCellValue($h.self::BARIS_HEADER, $label);
             $ws->mergeCells($h.self::BARIS_HEADER.':'.$h.(self::BARIS_DATA - 1));
@@ -129,8 +137,14 @@ class WisudaRekapTranskripSheet implements WithEvents, WithTitle
             if (($ring['mk_kurang'] ?? 0) > 0) {
                 $ws->getStyle('I'.$r)->getFont()->setBold(true)->getColor()->setARGB(self::WARNA_MERAH);
             }
-            $ws->setCellValue('J'.$r, $b['siap'] ? 'Siap wisuda' : 'Perlu dicek');
-            $ws->getStyle('J'.$r)->getFont()->setBold(true)->getColor()->setARGB($b['siap'] ? self::WARNA_HIJAU : self::WARNA_MERAH);
+            if ($isiManual) {
+                $lengkap = ($ring['mk_kurang'] ?? 1) === 0;
+                $ws->setCellValue('J'.$r, $lengkap ? 'Lengkap' : 'Perlu diisi');
+                $ws->getStyle('J'.$r)->getFont()->setBold(true)->getColor()->setARGB($lengkap ? self::WARNA_HIJAU : self::WARNA_MERAH);
+            } else {
+                $ws->setCellValue('J'.$r, $b['siap'] ? 'Siap wisuda' : 'Perlu dicek');
+                $ws->getStyle('J'.$r)->getFont()->setBold(true)->getColor()->setARGB($b['siap'] ? self::WARNA_HIJAU : self::WARNA_MERAH);
+            }
             if ($ring['tanpa_nilai'] > 0) {
                 $ws->getStyle('H'.$r)->getFont()->setBold(true)->getColor()->setARGB(self::WARNA_MERAH);
             }
@@ -146,7 +160,7 @@ class WisudaRekapTranskripSheet implements WithEvents, WithTitle
                 $sel = Coordinate::stringFromColumnIndex($jumlahMhs + $i + 1).$r;
                 $isian = $perKode->get($mk['kode']);
                 if (! $isian) {
-                    if (! $mk['luar'] && ($kodeKurikulum === null || isset($kodeKurikulum[$mk['kode']]))) {
+                    if (! $isiManual && ! $mk['luar'] && ($kodeKurikulum === null || isset($kodeKurikulum[$mk['kode']]))) {
                         $ws->getStyle($sel)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB(self::WARNA_BELUM_KRS);
                     }
 

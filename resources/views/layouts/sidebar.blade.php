@@ -55,6 +55,7 @@
             'children' => [
                 ['title' => 'Cek Per Angkatan', 'route' => 'wisuda.rekap.index', 'icon' => 'bx bx-radio-circle'],
                 ['title' => 'Cek Per Mahasiswa', 'route' => 'wisuda.transkrip.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'Cek Mahasiswa RPL', 'route' => 'wisuda.rpl.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
         [
