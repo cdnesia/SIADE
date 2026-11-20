@@ -139,6 +139,8 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
 
     Route::resource('kurikulum', KurikulumController::class)->except('show');
     Route::resource('kurikulum.matakuliah', KurikulumMataKuliahController::class)->except('show');
+    Route::get('kurikulum/{kurikulum}/matakuliah/{matakuliah}/bobot', [KurikulumMataKuliahController::class, 'bobot'])->name('kurikulum.matakuliah.bobot');
+    Route::put('kurikulum/{kurikulum}/matakuliah/{matakuliah}/bobot', [KurikulumMataKuliahController::class, 'bobotUpdate'])->name('kurikulum.matakuliah.bobot.update');
 });
 
 

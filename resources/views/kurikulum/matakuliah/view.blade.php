@@ -127,8 +127,9 @@
                                         <th class="text-center" style="width:70px">SKS</th>
                                         <th style="width:150px">Tipe / Jenis</th>
                                         <th style="width:100px">Status</th>
-                                        @canany([$modul . '.edit', $modul . '.destroy'])
-                                            <th class="text-end" style="width:100px">Aksi</th>
+                                        <th style="width:120px">Bobot Nilai</th>
+                                        @canany([$modul . '.edit', $modul . '.destroy', $modul . '.bobot'])
+                                            <th class="text-end" style="width:140px">Aksi</th>
                                         @endcanany
                                     </tr>
                                 </thead>
@@ -171,8 +172,25 @@
                                                     <span class="badge bg-danger-subtle text-danger-emphasis">Tidak Aktif</span>
                                                 @endif
                                             </td>
-                                            @canany([$modul . '.edit', $modul . '.destroy'])
+                                            <td>
+                                                @php $totalBobot = round((float) $item->total_bobot, 2); @endphp
+                                                @if ($item->is_penilaian_obe)
+                                                    <span class="badge bg-primary-subtle text-primary-emphasis" title="Nilai akhir memakai bobot per pertemuan">OBE &middot; {{ $totalBobot }}%</span>
+                                                @elseif ($totalBobot == 100)
+                                                    <span class="badge bg-success-subtle text-success-emphasis" title="Bobot lengkap, tetapi penilaian OBE belum dicentang">Lengkap 100%</span>
+                                                @elseif ($totalBobot > 0)
+                                                    <span class="badge bg-warning-subtle text-warning-emphasis">{{ $totalBobot }}%</span>
+                                                @else
+                                                    <span class="badge bg-secondary-subtle text-secondary-emphasis">Belum diatur</span>
+                                                @endif
+                                            </td>
+                                            @canany([$modul . '.edit', $modul . '.destroy', $modul . '.bobot'])
                                                 <td class="text-end text-nowrap">
+                                                    @can($modul . '.bobot')
+                                                        <a href="{{ route($modul . '.bobot', [$kurikulumId, Crypt::encrypt($item->id)]) }}"
+                                                            class="btn btn-primary btn-sm" title="Atur bobot nilai per pertemuan"><i
+                                                                class='bx bx-slider-alt me-0'></i></a>
+                                                    @endcan
                                                     @can($modul . '.edit')
                                                         <a href="{{ route($modul . '.edit', [$kurikulumId, Crypt::encrypt($item->id)]) }}"
                                                             class="btn btn-warning btn-sm" title="Edit"><i

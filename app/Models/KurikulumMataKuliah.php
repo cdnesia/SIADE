@@ -26,17 +26,27 @@ class KurikulumMataKuliah extends Model
         'jenis_matakuliah_id',
         'is_mbkm',
         'is_mk_universitas',
+        'is_penilaian_obe',
         'status',
         'prasyarat_lulus',
     ];
 
     protected $casts = [
         'prasyarat_lulus' => 'array',
+        'is_penilaian_obe' => 'boolean',
     ];
 
     public function kurikulum()
     {
         return $this->belongsTo(Kurikulum::class, 'kurikulum_id', 'id');
+    }
+
+    /**
+     * Setting penilaian per pertemuan (bobot % + jenis penilaian).
+     */
+    public function pertemuanNilai()
+    {
+        return $this->hasMany(KurikulumMataKuliahPertemuan::class, 'mata_kuliah_id', 'id')->orderBy('pertemuan');
     }
 
     public function prodi()

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Kurikulum;
 use App\Models\KurikulumMataKuliah;
+use App\Models\KurikulumMataKuliahPertemuan;
 use App\Models\KurikulumProdi;
 use App\Models\Prodi;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -52,6 +53,7 @@ class KurikulumMataKuliahController extends Controller
             ->where('kode_program_studi', $d['kode_program_studi'])
             ->orderBy('semester')
             ->orderBy('kode_mata_kuliah')
+            ->withSum('pertemuanNilai as total_bobot', 'bobot')
             ->get();
 
         $d['tipe'] = DB::table('master_tipe_matakuliah')->pluck('nama', 'id');
@@ -170,6 +172,115 @@ class KurikulumMataKuliahController extends Controller
         }
 
         return $redirect->with('success', 'Data berhasil dihapus');
+    }
+
+    /**
+     * Form setting bobot penilaian per pertemuan.
+     */
+    public function bobot($kurikulum, $matakuliah)
+    {
+        $kurikulum = $this->findKurikulum($kurikulum);
+        $mk = $kurikulum ? $this->findMataKuliah($kurikulum, $matakuliah) : null;
+        if (!$mk) {
+            return $this->invalidId();
+        }
+
+        $setting = $mk->pertemuanNilai->keyBy('pertemuan');
+
+        // Tampilkan pertemuan 1..max_pertemuan (atau lebih jika sudah ada setting di atasnya)
+        $jumlah = max((int) $mk->max_pertemuan, (int) $setting->keys()->max());
+
+        $d['kurikulum'] = $kurikulum;
+        $d['data'] = $mk;
+        $d['jumlah_pertemuan'] = $jumlah;
+        $d['setting'] = $setting;
+        $d['jenis'] = KurikulumMataKuliahPertemuan::JENIS;
+        $d['jumlah_jadwal'] = DB::table('tbl_jadwal_perkuliahan')->where('mata_kuliah_id', $mk->id)->count();
+
+        return view('kurikulum.matakuliah.bobot', $d);
+    }
+
+    /**
+     * Simpan bobot penilaian per pertemuan. Total bobot wajib 100%, atau semua 0 untuk mengosongkan.
+     */
+    public function bobotUpdate(Request $request, $kurikulum, $matakuliah)
+    {
+        $kurikulum = $this->findKurikulum($kurikulum);
+        $mk = $kurikulum ? $this->findMataKuliah($kurikulum, $matakuliah) : null;
+        if (!$mk) {
+            return $this->invalidId();
+        }
+
+        $request->validate([
+            'pertemuan' => 'required|array|min:1|max:255',
+            'pertemuan.*.jenis_penilaian' => ['required', Rule::in(array_keys(KurikulumMataKuliahPertemuan::JENIS))],
+            'pertemuan.*.bobot' => 'nullable|numeric|min:0|max:100',
+            'pertemuan.*.keterangan' => 'nullable|string|max:255',
+        ], [], [
+            'pertemuan.*.jenis_penilaian' => 'jenis penilaian',
+            'pertemuan.*.bobot' => 'bobot',
+            'pertemuan.*.keterangan' => 'keterangan',
+        ]);
+
+        $rows = [];
+        $errors = [];
+        foreach ($request->input('pertemuan') as $no => $item) {
+            $no = (int) $no;
+            if ($no < 1 || $no > 255) {
+                continue;
+            }
+            $bobot = round((float) ($item['bobot'] ?? 0), 2);
+            $jenis = $item['jenis_penilaian'];
+
+            if ($jenis === KurikulumMataKuliahPertemuan::TIDAK_DINILAI && $bobot > 0) {
+                $errors["pertemuan.$no.bobot"] = "Pertemuan $no: pilih jenis penilaian jika bobot lebih dari 0.";
+            }
+            if ($jenis !== KurikulumMataKuliahPertemuan::TIDAK_DINILAI && $bobot <= 0) {
+                $errors["pertemuan.$no.bobot"] = "Pertemuan $no: isi bobot untuk jenis penilaian yang dipilih.";
+            }
+
+            $rows[] = [
+                'mata_kuliah_id' => $mk->id,
+                'pertemuan' => $no,
+                'jenis_penilaian' => $jenis,
+                'bobot' => $bobot,
+                'keterangan' => trim((string) ($item['keterangan'] ?? '')) ?: null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        $total = round(array_sum(array_column($rows, 'bobot')), 2);
+        if ($total != 0 && $total != 100) {
+            $errors['total'] = "Total bobot harus 100% (saat ini {$total}%).";
+        }
+
+        // Penilaian OBE hanya bisa aktif jika bobot per pertemuan sudah lengkap 100%
+        $obe = $request->boolean('is_penilaian_obe');
+        if ($obe && $total != 100) {
+            $errors['is_penilaian_obe'] = 'Penilaian OBE hanya bisa diaktifkan jika total bobot 100%.';
+        }
+
+        if ($errors) {
+            return back()->withInput()->withErrors($errors)->with('error', 'Periksa kembali isian form Anda.');
+        }
+
+        try {
+            DB::transaction(function () use ($mk, $rows, $total, $obe) {
+                KurikulumMataKuliahPertemuan::where('mata_kuliah_id', $mk->id)->delete();
+                // Total 0 = setting dikosongkan
+                if ($total > 0) {
+                    KurikulumMataKuliahPertemuan::insert($rows);
+                }
+                $mk->update(['is_penilaian_obe' => $obe]);
+            });
+        } catch (\Exception $e) {
+            return back()->withInput()->with('error', 'Gagal memperbarui data. Coba lagi.');
+        }
+
+        return redirect()
+            ->route($this->modul . '.index', [Crypt::encrypt($kurikulum->id), 'prodi' => $mk->kode_program_studi])
+            ->with('success', 'Data berhasil diperbarui');
     }
 
     private function findKurikulum($id)
