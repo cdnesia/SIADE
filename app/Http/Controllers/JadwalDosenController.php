@@ -20,8 +20,8 @@ class JadwalDosenController extends Controller
 
     public function index(Request $request, MasterApiService $dataService)
     {
-        $masterDosen = collect($dataService->dataDosen()['data']['data'])->keyBy('id')->toArray();
-        $masterRuangan = collect($dataService->dataRuangan()['data']['data'])->keyBy('id')->toArray();
+        $masterDosen = collect($dataService->dataDosen())->keyBy('id')->toArray();
+        $masterRuangan = collect($dataService->dataRuangan())->keyBy('id')->toArray();
 
         if ($request->ajax()) {
             $query = JadwalPerkuliahan::from('tbl_jadwal_perkuliahan as j')
@@ -74,14 +74,14 @@ class JadwalDosenController extends Controller
             return DataTables::eloquent($query)
                 ->addIndexColumn()
                 ->addColumn('nama_dosen', function ($row) use ($masterDosen) {
-                    $nama = $masterDosen[$row->dosen_id]['namaLengkap'] ?? '-';
+                    $nama = $masterDosen[$row->dosen_id]['nama'] ?? '-';
 
                     if (!empty($row->dosen_team)) {
                         $namaTeam = collect(explode(',', $row->dosen_team))
                             ->map(fn($id) => trim($id))
                             ->filter(fn($id) => $id !== '' && $id != $row->dosen_id)
                             ->unique()
-                            ->map(fn($id) => $masterDosen[$id]['namaLengkap'] ?? null)
+                            ->map(fn($id) => $masterDosen[$id]['nama'] ?? null)
                             ->filter()
                             ->implode(', ');
 
@@ -133,7 +133,7 @@ class JadwalDosenController extends Controller
             'id' => $id,
             'nama' => $masterRuangan[$id]['nama'] ?? "Ruang {$id}",
         ])->sortBy('nama')->values();
-        $dosen = collect($dataService->dataDosen()['data']['data'])->sortBy('nama_lengkap')->values();
+        $dosen = collect($dataService->dataDosen())->sortBy('nama')->values();
 
         return view('jadwal-dosen.view', compact('prodi', 'kelas', 'hari', 'tahunAkademik', 'ruang', 'dosen'));
     }

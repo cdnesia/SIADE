@@ -64,16 +64,27 @@ class ApiService
     }
 
     /**
-     * POST file / multipart request.
+     * PATCH request.
      */
-    public function postFile(string $endpoint, array $data = []): Response
+    public function patch(string $endpoint, array $data = []): array
     {
-        $response = $this->client()->post($endpoint, $data);
+        return $this->handle(
+            fn () => $this->client()->patch($endpoint, $data),
+            $endpoint
+        );
+    }
+
+    /**
+     * GET file (mis. PDF) — Response mentah dikembalikan apa adanya.
+     */
+    public function getFile(string $endpoint, array $query = []): Response
+    {
+        $response = $this->client()->get($endpoint, $query);
 
         if ($response->status() === 401) {
             Cache::forget(self::TOKEN_CACHE_KEY);
 
-            $response = $this->client()->post($endpoint, $data);
+            $response = $this->client()->get($endpoint, $query);
         }
 
         return $response;
@@ -91,12 +102,14 @@ class ApiService
     }
 
     /**
-     * Request OAuth token menggunakan client_credentials.
+     * Request token REST-API (POST /v1/auth/token).
+     *
+     * Catatan: satu client = satu token aktif, meminta token baru
+     * membatalkan token lama — karena itu token wajib di-cache.
      */
     private function requestToken(): ?string
     {
-        return $this->authenticate('oauth/token', [
-            'grant_type' => 'client_credentials',
+        return $this->authenticate('v1/auth/token', [
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
         ]);
@@ -125,7 +138,10 @@ class ApiService
                 return null;
             }
 
-            $responseData = $response->json();
+            /*
+             * Format REST-API: { success, data: { access_token, token_type, expires_in, expires_at }, request_id }
+             */
+            $responseData = $response->json('data') ?? [];
 
             if (empty($responseData['access_token'])) {
                 Log::error('ApiService: access_token tidak ditemukan.', [
@@ -137,17 +153,8 @@ class ApiService
             }
 
             /*
-             * Response terbaru:
-             *
-             * "expires_in": "15m"
-             *
-             * Laravel Cache::put() membutuhkan waktu
-             * dalam detik atau DateTime.
-             *
-             * Kita konversi format:
-             * 15m -> 900 detik
-             * 1h  -> 3600 detik
-             * 30s -> 30 detik
+             * expires_in dari REST-API berupa detik (mis. 3600).
+             * Format lama "15m" / "1h" tetap didukung parseExpiresIn().
              */
             $expiresIn = $this->parseExpiresIn(
                 $responseData['expires_in'] ?? '15m'
@@ -219,6 +226,12 @@ class ApiService
 
     /**
      * Handle response API.
+     *
+     * Format REST-API:
+     *   sukses : { success: true, data: {...}, request_id }
+     *   gagal  : { success: false, error: { code, message, details? }, request_id }
+     *
+     * Kembalian: ['error_code', 'error_desc', 'data' => body JSON utuh].
      */
     private function handle(Closure $request, string $endpoint): array
     {
@@ -245,7 +258,7 @@ class ApiService
 
                 return [
                     'error_code' => $response->status(),
-                    'error_desc' => $response->json('message') ?? 'HTTP error: '.$response->status(),
+                    'error_desc' => self::pesanError($response),
                     'data' => null,
                 ];
             }
@@ -268,5 +281,15 @@ class ApiService
                 'data' => null,
             ];
         }
+    }
+
+    /**
+     * Ambil pesan error dari respons REST-API (error.message), fallback ke format lama.
+     */
+    public static function pesanError(Response $response): string
+    {
+        return $response->json('error.message')
+            ?? $response->json('message')
+            ?? 'HTTP error: '.$response->status();
     }
 }

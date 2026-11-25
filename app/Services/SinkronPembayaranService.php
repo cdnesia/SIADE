@@ -8,7 +8,8 @@ use RuntimeException;
 
 /**
  * Memindahkan pembayaran daftar ulang yang dilakukan saat masih memakai nomor pendaftaran PMB
- * (contoh UMJA202640183) ke tagihan NIM (contoh S12654001) lewat API tagihan.
+ * (contoh UMJA202640183) ke tagihan NIM (contoh S12654001) lewat REST-API tagihan
+ * (POST /v1/keuangan/tagihan/cari & PATCH /v1/keuangan/tagihan/{id_record_tagihan}).
  *
  * Alur per NIM:
  * 1. Cari nomor pendaftaran di penmaru_old.pmb berdasarkan NIM.
@@ -28,7 +29,7 @@ class SinkronPembayaranService
 
     public const MAKS_NIM = 200;
 
-    public function __construct(protected ApiService $api) {}
+    public function __construct(protected ApiService $api, protected MasterApiService $master) {}
 
     /**
      * Pratinjau sinkron untuk sejumlah NIM tanpa mengubah data.
@@ -65,25 +66,24 @@ class SinkronPembayaranService
         $sumber = $hasil['sumber'];
         $tujuan = $hasil['tujuan'];
         $payload = [
-            'idRecordTagihan' => $tujuan['id_record_tagihan'],
-            'npm' => $nim,
-            'jenisTagihan' => $tujuan['jenis_tagihan'],
+            'nim' => $nim,
+            'jenis_tagihan' => $tujuan['jenis_tagihan'],
         ];
         // Sudah disinkron sebelumnya: pembayaran tidak ditambahkan lagi, hanya status dinonaktifkan
         if ($hasil['status'] !== 'perlu_nonaktif') {
-            $payload['nominalTerbayar'] = $hasil['terbayar_baru'];
+            $payload['nominal_terbayar'] = $hasil['terbayar_baru'];
         }
         if ($hasil['nonaktifkan']) {
-            $payload['statusAktif'] = 'T';
+            $payload['status_aktif'] = 'T';
         }
         if (! $hasil['cocok'] && $hasil['status'] !== 'perlu_nonaktif') {
-            $payload['detailTagihan'] = $this->keCamelCase($sumber['detail_tagihan']);
-            $payload['detailPotongan'] = $this->keCamelCase($sumber['detail_potongan']);
+            $payload['detail_tagihan'] = $this->keRincianApi($sumber['detail_tagihan']);
+            $payload['detail_potongan'] = $this->keRincianApi($sumber['detail_potongan']);
         }
 
-        $respon = $this->api->post('public/api/tagihan/update', $payload);
+        $respon = $this->api->patch('v1/keuangan/tagihan/'.rawurlencode($tujuan['id_record_tagihan']), $payload);
         if (! ($respon['data']['success'] ?? false)) {
-            throw new RuntimeException('API tagihan menolak: '.($respon['data']['message'] ?? $respon['error_desc']));
+            throw new RuntimeException('API tagihan menolak: '.$respon['error_desc']);
         }
 
         return $hasil;
@@ -94,14 +94,13 @@ class SinkronPembayaranService
      */
     private function tagihan(array $npm): Collection
     {
-        $respon = $this->api->post('public/api/tagihan/cek', ['npm' => array_values(array_unique($npm))]);
-        if (! ($respon['data']['success'] ?? false)) {
-            throw new RuntimeException('Gagal mengambil data tagihan: '.($respon['data']['message'] ?? $respon['error_desc']));
+        // REST-API tidak mengembalikan tagihan terhapus, jadi tidak perlu filter deleted_at
+        $respon = $this->master->cariTagihan($npm);
+        if ($respon['error_code'] !== 0) {
+            throw new RuntimeException('Gagal mengambil data tagihan: '.$respon['error_desc']);
         }
 
-        return collect($respon['data']['data'] ?? [])
-            ->filter(fn ($t) => empty($t['deleted_at']))
-            ->groupBy('npm');
+        return collect($respon['items'])->groupBy('nim');
     }
 
     /**
@@ -111,7 +110,7 @@ class SinkronPembayaranService
     {
         return $tagihan
             ->filter(fn ($t) => collect($this->rincian($t['detail_tagihan']))->has(self::BIPOT_SPP))
-            ->sortBy([fn ($a, $b) => (float) $b['nominal_terbayar'] <=> (float) $a['nominal_terbayar'], ['id', 'desc']])
+            ->sortBy([fn ($a, $b) => (float) $b['nominal_terbayar'] <=> (float) $a['nominal_terbayar'], ['dibuat_pada', 'desc']])
             ->first();
     }
 
@@ -122,7 +121,7 @@ class SinkronPembayaranService
     {
         return $tagihan
             ->filter(fn ($t) => strtoupper((string) $t['jenis_tagihan']) === 'SPP')
-            ->sortBy([['tahun_akademik', 'asc'], ['id', 'asc']])
+            ->sortBy([['tahun_akademik', 'asc'], ['dibuat_pada', 'asc']])
             ->first();
     }
 
@@ -202,14 +201,14 @@ class SinkronPembayaranService
     }
 
     /**
-     * Format rincian DB (snake_case) ke format request API (camelCase).
+     * Rincian tagihan/potongan ke format request REST-API (snake_case, hanya id_bipot, nama_bipot, nominal).
      */
-    private function keCamelCase($detail): array
+    private function keRincianApi($detail): array
     {
-        return collect(is_string($detail) ? json_decode($detail, true) : $detail)
+        return collect(is_string($detail) ? json_decode($detail, true) : ($detail ?? []))
             ->map(fn ($item) => [
-                'idBipot' => $item['id_bipot'],
-                'namaBipot' => $item['nama_bipot'],
+                'id_bipot' => $item['id_bipot'],
+                'nama_bipot' => $item['nama_bipot'],
                 'nominal' => $item['nominal'],
             ])
             ->values()

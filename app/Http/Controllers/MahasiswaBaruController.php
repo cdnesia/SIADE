@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\MahasiswaBaruExport;
-use App\Services\ApiService;
+use App\Services\MasterApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -14,7 +14,7 @@ class MahasiswaBaruController extends Controller
 
     public const EXCLUDE = ['UMJA202610014', 'UMJA202610013', 'UMJA202610006'];
 
-    public function __construct(protected ApiService $api) {}
+    public function __construct(protected MasterApiService $master) {}
     public function index()
     {
 
@@ -40,18 +40,17 @@ class MahasiswaBaruController extends Controller
         $belum_ada_nim_array = $belum_ada_nim->pluck('pmb')->unique()->values()->toArray();
 
 
-        $result = $this->api->post(
-            'public/api/tagihan/cek',
-            [
-                "npm"             => $belum_ada_nim_array,
-                "tahunAkademik"   => $gelombang_pendaftaran,
-            ]
-        );
+        // REST-API: POST /v1/keuangan/tagihan/cari (dipecah otomatis per 100 NIM)
+        $result = $this->master->cariTagihan($belum_ada_nim_array, [
+            'tahun_akademik' => array_values(array_map('strval', array_filter($gelombang_pendaftaran))),
+        ]);
 
         $dataLolos = [];
 
-        if ($result['data']['success'] ?? false) {
-            $tagihanByNpm = collect($result['data']['data'] ?? [])->groupBy('npm');
+        if ($result['error_code'] !== 0) {
+            session()->now('error', 'Gagal memuat data tagihan. Periksa koneksi Anda.');
+        } else {
+            $tagihanByNpm = collect($result['items'])->groupBy('nim');
             foreach ($tagihanByNpm as $npm => $tagihanList) {
                 foreach ($tagihanList as $tagihan) {
                     $total = (float) ($tagihan['total_tagihan'] ?? 0);

@@ -38,7 +38,7 @@ class KegiatanMahasiswaController extends Controller
                 ? json_decode($item->kode_program_studi, true)
                 : [];
 
-            $item->nama_bipot = $allbipot[$item->id_bipot]['nama_bipot'] ?? null;
+            $item->nama_bipot = $allbipot[$item->id_bipot]['nama'] ?? null;
             $item->prodis = collect($kodeProdi)
                 ->map(fn($kode) => $allProdi[$kode] ?? null)
                 ->filter()
@@ -56,7 +56,7 @@ class KegiatanMahasiswaController extends Controller
         $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
         $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
         $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
-        $d['bipot'] = $api->bipot()['data']['data'] ?? [];
+        $d['bipot'] = $api->bipot();
         $d['data'] = null;
         return view('kegiatan-mahasiswa.form', $d);
     }
@@ -108,7 +108,7 @@ class KegiatanMahasiswaController extends Controller
             $d['data'] = KegiatanMahasiswa::findOrFail($id);
             $d['tahun_angkatan'] = Mahasiswa::distinct()->pluck('tahun_angkatan');
             $d['prodi'] = Prodi::orderBy('nama_program_studi_idn')->get();
-            $d['bipot'] = $api->bipot()['data']['data'] ?? [];
+            $d['bipot'] = $api->bipot();
             $d['kelas_perkuliahan'] = DB::table('master_kelas_perkuliahan')->get();
             return view('kegiatan-mahasiswa.form', $d);
         } catch (DecryptException $e) {

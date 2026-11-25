@@ -172,17 +172,14 @@ class CekKhsMahasiswa extends Controller
         $d['mahasiswa'] = $dataMahasiswa;
         return view('kipk.khs', $d);
     }
-    public function khsCetak($npm, $periode)
+    public function khsCetak($npm, $periode, MasterApiService $dataService)
     {
-        $response = $this->api->postFile('/api/v1/khs/cetak', [
-            'npm' => $npm,
-            'periode' => $periode
-        ]);
+        $response = $dataService->cetakKhs($npm, $periode);
 
         if (!$response->successful()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mencetak KHS. Coba lagi.',
+                'message' => $response->json('error.message') ?? 'Gagal mencetak KHS. Coba lagi.',
             ], $response->status());
         }
 

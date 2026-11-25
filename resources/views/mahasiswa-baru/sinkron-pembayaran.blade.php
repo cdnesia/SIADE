@@ -125,7 +125,7 @@
                                     </td>
                                     <td class="small">
                                         @if ($h['sumber'])
-                                            <div>TA {{ $h['sumber']['tahun_akademik'] }} · #{{ $h['sumber']['id'] }}</div>
+                                            <div>TA {{ $h['sumber']['tahun_akademik'] }} · {{ $h['sumber']['nomor_tagihan'] }}</div>
                                             <div>Total {{ $rp($h['sumber']['total_tagihan']) }}</div>
                                             <div class="fw-semibold text-success">Terbayar
                                                 {{ $rp($h['sumber']['nominal_terbayar']) }}</div>
@@ -135,7 +135,7 @@
                                     </td>
                                     <td class="small">
                                         @if ($h['tujuan'])
-                                            <div>TA {{ $h['tujuan']['tahun_akademik'] }} · #{{ $h['tujuan']['id'] }}</div>
+                                            <div>TA {{ $h['tujuan']['tahun_akademik'] }} · {{ $h['tujuan']['nomor_tagihan'] }}</div>
                                             <div>Total {{ $rp($h['tujuan']['total_tagihan']) }}</div>
                                             <div>Ditagih {{ $rp($h['tujuan']['nominal_ditagih']) }}</div>
                                             <div>Terbayar {{ $rp($h['tujuan']['nominal_terbayar']) }}</div>

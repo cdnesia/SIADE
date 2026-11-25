@@ -4,12 +4,20 @@ namespace App\Services;
 
 use App\Models\KRS;
 use App\Models\Mahasiswa;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Pemanggil REST-API (repo API-PUBLIC) untuk SIADE.
+ * Panduan endpoint & izin: REST-API/docs/MIGRASI-SERVICE-UMJAMBI.md (bagian 4.5).
+ */
 class MasterApiService
 {
+    private const CACHE_PREFIX = 'rest_api.referensi.';
+
     public function __construct(protected ApiService $api) {}
 
     public function expandTerms(int $start, int $end): array
@@ -70,7 +78,7 @@ class MasterApiService
         $tahunAkademikAktif = $this->tahunAkademikAktif($kode_program_studi) ?? $tahun_angkatan;
         $tahunAkademikDitempuh = $this->expandTerms($tahun_angkatan, $tahunAkademikAktif);
 
-        $masterDosen = collect($this->dataDosen()['data']['data'] ?? [])->keyBy('id');
+        $masterDosen = collect($this->dataDosen())->keyBy('id');
 
         foreach ($tahunAkademikDitempuh as $key => $value) {
             if (! isset($krs[$value])) {
@@ -115,7 +123,7 @@ class MasterApiService
                     'jam_mulai' => $row['jadwal']['jam_mulai'] ?? '',
                     'jam_selesai' => $row['jadwal']['jam_selesai'] ?? '',
                     'dosen_id' => $row['jadwal']['dosen_id'] ?? '',
-                    'nama_dosen' => $masterDosen[$row['jadwal']['dosen_id'] ?? null]['namaLengkap'] ?? '-',
+                    'nama_dosen' => $masterDosen[$row['jadwal']['dosen_id'] ?? null]['nama'] ?? '-',
                     'ruang_id' => $row['jadwal']['ruang_id'] ?? '',
                     'kelompok' => $row['jadwal']['kelompok'] ?? '',
                     'hari' => $row['hari']['nama_hari'] ?? '',
@@ -131,39 +139,128 @@ class MasterApiService
         return $krs;
     }
 
-    public function bipot()
+    /**
+     * Referensi biaya & potongan (SIMAKU) — GET /v1/keuangan/biaya-potongan.
+     * Izin: keuangan.biaya-potongan.index
+     *
+     * @return list<array{id: int, nama: string, jenis: string}>
+     */
+    public function bipot(): array
     {
-        return $this->api->get('public/api/referensi/biaya-potongan/semua');
+        return $this->referensi('bipot', 'v1/keuangan/biaya-potongan');
     }
 
-    public function cetakKhs(string $npm, string $periode)
+    /**
+     * Daftar dosen ringkas — GET /v1/kepegawaian/pegawai/semua?tipe=dosen.
+     * Izin: kepegawaian.pegawai.semua
+     *
+     * $hanyaAktif = true untuk dropdown pilih PA; false (default) untuk menampilkan
+     * nama dosen, termasuk yang sudah nonaktif.
+     *
+     * @return list<array{id: int, nik: ?string, nidn: ?string, nama: string, tipe: string, status: string}>
+     */
+    public function dataDosen(bool $hanyaAktif = false): array
     {
-        return $this->api->postFile('public/api/print/khs', [
-            'npm' => $npm,
-            'tahunAkademik' => $periode,
-        ]);
+        $query = ['tipe' => 'dosen'];
+        if ($hanyaAktif) {
+            $query['status'] = 'aktif';
+        }
+
+        return $this->referensi(
+            'dosen'.($hanyaAktif ? '_aktif' : ''),
+            'v1/kepegawaian/pegawai/semua?'.http_build_query($query)
+        );
     }
 
-    public function cetakKrs(string $npm, string $periode)
+    /**
+     * Daftar ruang kuliah — GET /v1/akademik/ruangan/semua.
+     * Izin: akademik.ruangan.semua
+     *
+     * @return list<array{id: int, nama: string, kuota: ?int}>
+     */
+    public function dataRuangan(): array
     {
-        return $this->api->postFile('public/api/print/krs', [
-            'npm' => $npm,
-            'tahunAkademik' => $periode,
-        ]);
+        return $this->referensi('ruangan', 'v1/akademik/ruangan/semua');
     }
 
-    public function dataDosen()
+    /**
+     * PDF KHS — GET /v1/akademik/khs/{nim}/{tahun_akademik}/pdf. Izin: akademik.khs.cetak
+     * 409 = nilai/EDOM belum lengkap (belum boleh dicetak).
+     */
+    public function cetakKhs(string $npm, string $periode): Response
     {
-        return $this->api->get('public/api/referensi/pegawai/semua');
+        return $this->api->getFile('v1/akademik/khs/'.rawurlencode($npm).'/'.rawurlencode($periode).'/pdf');
     }
 
-    public function dataRuangan()
+    /**
+     * PDF KRS — GET /v1/akademik/krs/{nim}/{tahun_akademik}/pdf. Izin: akademik.krs.cetak
+     */
+    public function cetakKrs(string $npm, string $periode): Response
     {
-        return $this->api->get('public/api/referensi/ruangan/semua');
+        return $this->api->getFile('v1/akademik/krs/'.rawurlencode($npm).'/'.rawurlencode($periode).'/pdf');
     }
 
-    public function cekTagihanKKN(array $npm)
+    /**
+     * Tagihan KKN banyak NIM — POST /v1/keuangan/tagihan/cari (maks. 100 NIM per request).
+     * Izin: keuangan.tagihan.cari
+     *
+     * @param  list<string>  $npm
+     * @return array{error_code: int, error_desc: string, items: list<array<string, mixed>>}
+     */
+    public function cekTagihanKKN(array $npm): array
     {
-        return $this->api->post('public/api/v1/tagihan/cek', ['npm' => $npm, 'jenisTagihan' => 'kkn']);
+        return $this->cariTagihan($npm, ['jenis_tagihan' => 'KKN']);
+    }
+
+    /**
+     * Cari tagihan banyak NIM, otomatis dipecah per 100 NIM.
+     * Gagal di salah satu potongan → error_code ≠ 0 (items berisi yang sempat terambil).
+     *
+     * @param  list<string>  $npm
+     * @param  array{tahun_akademik?: list<string>, jenis_tagihan?: string}  $filter
+     * @return array{error_code: int, error_desc: string, items: list<array<string, mixed>>}
+     */
+    public function cariTagihan(array $npm, array $filter = []): array
+    {
+        $items = [];
+        $nim = array_values(array_unique(array_filter(array_map('strval', $npm))));
+
+        foreach (array_chunk($nim, 100) as $potongan) {
+            $respon = $this->api->post('v1/keuangan/tagihan/cari', ['nim' => $potongan, ...$filter]);
+
+            if ($respon['error_code'] !== 0 || ! ($respon['data']['success'] ?? false)) {
+                return [
+                    'error_code' => $respon['error_code'] ?: 1,
+                    'error_desc' => $respon['data']['error']['message'] ?? $respon['error_desc'],
+                    'items' => $items,
+                ];
+            }
+
+            array_push($items, ...($respon['data']['data']['items'] ?? []));
+        }
+
+        return ['error_code' => 0, 'error_desc' => '', 'items' => $items];
+    }
+
+    /**
+     * Ambil data referensi `…/semua` (bentuk { data: { items, meta } }), di-cache 10 menit.
+     * Hanya hasil yang berhasil & tidak kosong yang disimpan, agar kegagalan sesaat tidak ikut ter-cache.
+     */
+    private function referensi(string $kunci, string $endpoint): array
+    {
+        $cacheKey = self::CACHE_PREFIX.$kunci;
+
+        if (is_array($cached = Cache::get($cacheKey))) {
+            return $cached;
+        }
+
+        $respon = $this->api->get($endpoint);
+        $items = $respon['error_code'] === 0 ? ($respon['data']['data']['items'] ?? []) : [];
+
+        if ($items !== []) {
+            Cache::put($cacheKey, $items, now()->addMinutes(10));
+        }
+
+        return $items;
     }
 }

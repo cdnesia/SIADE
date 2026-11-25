@@ -42,9 +42,9 @@ class MahasiswaController extends Controller
             return $dosen;
         }
 
-        $dosen = collect($api->dataDosen()['data']['data'] ?? [])
+        $dosen = collect($api->dataDosen())
             ->mapWithKeys(fn($item) => [$item['id'] => [
-                'nama_lengkap' => $item['namaLengkap'] ?? '-',
+                'nama_lengkap' => $item['nama'] ?? '-',
                 'nidn' => $item['nidn'] ?? $item['nik'] ?? '-',
             ]]);
 
@@ -178,7 +178,8 @@ class MahasiswaController extends Controller
             return back()->with('error', 'ID tidak valid.');
         }
 
-        $idDosen = collect($api->dataDosen()['data']['data'] ?? [])->pluck('id');
+        // Hanya dosen aktif yang boleh dipilih sebagai PA
+        $idDosen = collect($api->dataDosen(hanyaAktif: true))->pluck('id');
         if ($idDosen->isEmpty()) {
             return back()->with('error', 'Gagal memuat data. Periksa koneksi Anda.');
         }
@@ -289,11 +290,11 @@ class MahasiswaController extends Controller
         $masterKelas = KelasPerkuliahan::all()->keyBy('id');
         $masterJenisPendaftaran = DB::table('master_jenis_pendaftaran')->get()->keyBy('id');
 
-        $masterDosen = collect($api->dataDosen()['data']['data'] ?? [])
+        $masterDosen = collect($api->dataDosen())
             ->map(function ($item) {
                 return [
                     'id' => $item['id'] ?? null,
-                    'nama_lengkap' => $item['namaLengkap'] ?? '-',
+                    'nama_lengkap' => $item['nama'] ?? '-',
                     'nidn' => $item['nidn'] ?? $item['nik'] ?? '-'
                 ];
             })
@@ -344,7 +345,14 @@ class MahasiswaController extends Controller
         $d['krs'] = $api->krs($encryptedNpm);
         $d['akm'] = Akm::where('npm', $mahasiswa['npm'])->get()->keyBy('kode_tahun_akademik');
         $d['mahasiswa'] = $mahasiswa;
-        $d['dosen'] = $masterDosen->sortBy('nama_lengkap')->values();
+        // Dropdown pilih PA: hanya dosen aktif (nama PA tetap dari $masterDosen semua status)
+        $d['dosen'] = collect($api->dataDosen(hanyaAktif: true))
+            ->map(fn($item) => [
+                'id' => $item['id'],
+                'nama_lengkap' => $item['nama'] ?? '-',
+                'nidn' => $item['nidn'] ?? $item['nik'] ?? '-',
+            ])
+            ->sortBy('nama_lengkap')->values();
         $d['kelasPerkuliahan'] = $masterKelas->sortBy('nama_program_perkuliahan')->values();
         $d['page'] = $page;
         $d['isPenerimaBeasiswa'] = $isPenerimaBeasiswa;
@@ -465,7 +473,7 @@ class MahasiswaController extends Controller
 
         // KRS hasil jadwal menyimpan mata_kuliah_id NULL, jadi ambil dari jadwalnya
         $mataKuliahId = $krs->jadwal->mata_kuliah_id ?? $krs->mata_kuliah_id;
-        $masterRuangan = collect($api->dataRuangan()['data']['data'] ?? [])->keyBy('id');
+        $masterRuangan = collect($api->dataRuangan())->keyBy('id');
 
         $query = JadwalPerkuliahan::from('tbl_jadwal_perkuliahan as j')
             ->leftJoin('master_kelas_perkuliahan as k', 'j.program_kuliah_id', '=', 'k.id')
@@ -480,7 +488,7 @@ class MahasiswaController extends Controller
             }, 'terisi');
 
         if (!$request->filled('jadwal_id')) {
-            $masterDosen = collect($api->dataDosen()['data']['data'] ?? [])->keyBy('id');
+            $masterDosen = collect($api->dataDosen())->keyBy('id');
 
             $jadwal = $query->orderBy('j.kelompok')->orderBy('j.hari_id')->orderBy('j.jam_mulai')->get()
                 ->map(function ($row) use ($masterRuangan, $masterDosen, $krs) {
@@ -492,7 +500,7 @@ class MahasiswaController extends Controller
                         'hari' => $row->nama_hari ?? '-',
                         'jam' => substr($row->jam_mulai, 0, 5) . ' - ' . substr($row->jam_selesai, 0, 5),
                         'ruang' => $masterRuangan[$row->ruang_id]['nama'] ?? '-',
-                        'dosen' => $masterDosen[$row->dosen_id]['namaLengkap'] ?? '-',
+                        'dosen' => $masterDosen[$row->dosen_id]['nama'] ?? '-',
                         'kuota' => $kuota,
                         'terisi' => (int) $row->terisi,
                         'penuh' => $kuota !== null && (int) $row->terisi >= (int) $kuota,
@@ -574,7 +582,7 @@ class MahasiswaController extends Controller
         if (!$response->successful()) {
             return response()->json([
                 'success' => false,
-                'message' => $response->json('message') ?? 'Gagal mencetak KHS. Coba lagi.',
+                'message' => $response->json('error.message') ?? 'Gagal mencetak KHS. Coba lagi.',
             ], $response->status());
         }
 
@@ -591,7 +599,7 @@ class MahasiswaController extends Controller
         if (!$response->successful()) {
             return response()->json([
                 'success' => false,
-                'message' => $response->json('message') ?? 'Gagal mencetak KRS. Coba lagi.',
+                'message' => $response->json('error.message') ?? 'Gagal mencetak KRS. Coba lagi.',
             ], $response->status());
         }
 

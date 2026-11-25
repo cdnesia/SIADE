@@ -25,10 +25,14 @@ class LaporanKKNController extends Controller
         $npms = $pendaftarKKN->pluck('npm')->unique()->values()->toArray();
 
         $cekPembayaran = $api->cekTagihanKKN($npms);
+        if ($cekPembayaran['error_code'] !== 0) {
+            // Status bayar tidak bisa dipastikan — beri tahu pengguna lewat toast
+            session()->now('error', 'Gagal memuat data tagihan KKN. Periksa koneksi Anda.');
+        }
 
-        $status = collect($cekPembayaran['data']['data'] ?? [])
+        $status = collect($cekPembayaran['items'])
             ->filter(fn ($tagihan) => (float) $tagihan['nominal_terbayar'] === (float) $tagihan['total_tagihan'])
-            ->pluck('npm')
+            ->pluck('nim')
             ->toArray();
 
         $pendaftarKKN = $pendaftarKKN->map(function ($item) use ($status) {
