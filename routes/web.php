@@ -18,6 +18,7 @@ use App\Http\Controllers\LembagaBeasiswaController;
 use App\Http\Controllers\MahasiswaBaruController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\MahasiswaPTRPLController;
+use App\Http\Controllers\MatakuliahDobelController;
 use App\Http\Controllers\PencarianPendaftarController;
 use App\Http\Controllers\PenerimaBeasiswaController;
 use App\Http\Controllers\PermissionsController;
@@ -66,6 +67,11 @@ Route::middleware(['auth', 'checkPermission'])->group(function () {
     Route::resource('kalender-akademik', KalenderAkademikController::class)->except('show');
     Route::resource('kegiatan-mahasiswa', KegiatanMahasiswaController::class)->except('show');
     Route::resource('jadwal-dosen', JadwalDosenController::class)->only('index');
+    Route::prefix('perkuliahan/mk-dobel')->name('mk-dobel.')->group(function () {
+        Route::get('/', [MatakuliahDobelController::class, 'index'])->name('index');
+        Route::put('/{krs}', [MatakuliahDobelController::class, 'update'])->whereNumber('krs')->name('update');
+        Route::delete('/{krs}', [MatakuliahDobelController::class, 'destroy'])->whereNumber('krs')->name('destroy');
+    });
 
     Route::resource('lembaga-beasiswa', LembagaBeasiswaController::class)->except('show');
     Route::resource('penerima-beasiswa', PenerimaBeasiswaController::class)->except('show');

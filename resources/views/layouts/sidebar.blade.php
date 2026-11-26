@@ -29,6 +29,7 @@
             'icon' => 'bx bx-calendar',
             'children' => [
                 ['title' => 'Jadwal Dosen Mengajar', 'route' => 'jadwal-dosen.index', 'icon' => 'bx bx-radio-circle'],
+                ['title' => 'MK Dobel Mahasiswa', 'route' => 'mk-dobel.index', 'icon' => 'bx bx-radio-circle'],
             ],
         ],
         [
